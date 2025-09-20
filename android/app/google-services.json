@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "1045803774649",
+    "project_id": "to-do-list-b831f",
+    "storage_bucket": "to-do-list-b831f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1045803774649:android:ac15540fde4ef7c54c6168",
+        "android_client_info": {
+          "package_name": "com.starshield.TaskManagerApp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1045803774649-6gk4u6tar6q7r92ag6vtthf5a6j2068e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLt2ew2z0TFtW02Ox5TPaBytvN729UQPo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1045803774649-6gk4u6tar6q7r92ag6vtthf5a6j2068e.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1045803774649:android:894d9b7a532fe8454c6168",
+        "android_client_info": {
+          "package_name": "com.starshield.task_manager_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1045803774649-6gk4u6tar6q7r92ag6vtthf5a6j2068e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLt2ew2z0TFtW02Ox5TPaBytvN729UQPo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1045803774649-6gk4u6tar6q7r92ag6vtthf5a6j2068e.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

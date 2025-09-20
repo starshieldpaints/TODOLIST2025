@@ -1,4 +1,4 @@
-package com.taskmanagerapp
+package com.starshield.task_manager_app;  // Change this line
 
 import android.app.Application
 import com.facebook.react.PackageList

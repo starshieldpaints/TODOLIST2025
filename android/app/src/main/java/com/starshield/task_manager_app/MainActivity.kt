@@ -1,4 +1,5 @@
-package com.taskmanagerapp
+package com.starshield.task_manager_app;  // Change this line
+
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

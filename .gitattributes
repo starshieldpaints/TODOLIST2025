@@ -1,0 +1,7 @@
+* text=auto
+*.json text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.kt text eol=lf
+*.gradle text eol=lf
+*.properties text eol=lf
