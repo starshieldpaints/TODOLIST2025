@@ -38,7 +38,7 @@ const LoginScreen = () => {
                 case 'admin':
                     navigation.replace('admin');
                     break;
-                case 'superAdmin':
+                case 'superadmin':
                     navigation.replace('superAdmin');
                     break;
                 default:
