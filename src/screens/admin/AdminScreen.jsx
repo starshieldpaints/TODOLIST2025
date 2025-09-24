@@ -1,5 +1,6 @@
 // AdminTabs.js
 import React from 'react';
+import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import TasksScreen from './TasksScreen';
 import DashboardScreen from './DashboardScreen';
@@ -24,7 +25,16 @@ const AdminTabs = () => {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.text,
-        tabBarStyle: { backgroundColor: theme.colors.card},
+        tabBarStyle: {
+          backgroundColor: theme.colors.card,
+          borderTopWidth: 0,   // removes white border line
+          elevation: 0,        // removes Android shadow
+          height: 60,          // optional: adjust tab height
+        },
+        tabBarBackground: () => (
+          <View style={{ flex: 1, backgroundColor: theme.colors.card }} />
+        ),
+        safeAreaInsets: { bottom: 0 }, // removes extra white gap
       }}
     >
       <Tab.Screen

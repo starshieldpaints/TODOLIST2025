@@ -17,7 +17,6 @@ import firestore from '@react-native-firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../hooks/useTheme';
 
-const DEFAULT_ADMIN_ID = 'MWtoCbA37jWTJKYa6yUsdDpIdd43';
 
 const RegisterScreen = () => {
     const navigation = useNavigation();
@@ -62,7 +61,6 @@ const RegisterScreen = () => {
                 email,
                 name: name.trim(),
                 role: 'user',
-                adminId: DEFAULT_ADMIN_ID,
                 notificationPreferences: { push: true, email: false },
                 createdAt: firestore.FieldValue.serverTimestamp(),
             });

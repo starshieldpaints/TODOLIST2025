@@ -1,4 +1,4 @@
-// AppNavigation.js
+
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -21,13 +21,14 @@ const SuperAdminTabs = () => {
         tabBarInactiveTintColor: theme.colors.text,
         tabBarStyle: {
           backgroundColor: theme.colors.card,
-          height: 60,
+          height: 70,
+          paddingTop: 0,
           paddingBottom: 5,
-          paddingTop: 5,
         },
+        tabBarSafeAreaInsets: { top: 0 },
         tabBarIcon: ({ color, size }) => {
           let iconName;
-          if (route.name === 'Dashboard') iconName = 'home-outline';
+          if (route.name === 'Dashboard') iconName = 'grid-outline';
           else if (route.name === 'ManageAdmin') iconName = 'people-outline';
           else if (route.name === 'ManageUser') iconName = 'person-add-outline';
           else if (route.name === 'Profile') iconName = 'person-circle-outline';
@@ -42,5 +43,6 @@ const SuperAdminTabs = () => {
     </Tab.Navigator>
   );
 };
+
 
 export default SuperAdminTabs;

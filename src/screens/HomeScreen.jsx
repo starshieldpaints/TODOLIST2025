@@ -21,6 +21,8 @@ export default function HomeScreen({ navigation }) {
     ];
 
     useEffect(() => {
+
+       
         const checkAuth = async () => {
             const user = auth().currentUser;
 
@@ -32,7 +34,7 @@ export default function HomeScreen({ navigation }) {
             try {
                 const doc = await firestore().collection("users").doc(user.uid).get();
                 const role = doc.data()?.role;
-
+                
                 if (role === "admin") navigation.replace("admin");
                 else if (role === "superadmin") navigation.replace("superAdmin");
                 else navigation.replace("user");
@@ -43,6 +45,8 @@ export default function HomeScreen({ navigation }) {
         };
 
         checkAuth();
+
+       
     }, [navigation]);
 
 

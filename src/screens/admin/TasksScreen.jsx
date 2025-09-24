@@ -2,10 +2,12 @@ import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import { ThemeContext } from '../../context/ThemeContext';
+import auth from '@react-native-firebase/auth';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const TasksScreen = ({ route }) => {
     const { theme } = useContext(ThemeContext);
-    const adminUid = route?.params?.adminUid; // make sure this is passed via navigation
+    const adminUid = auth().currentUser.uid; // make sure this is passed via navigation
 
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -91,16 +93,37 @@ const TasksScreen = ({ route }) => {
         );
     }
 
+    // return (
+    //     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    //     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    //         <FlatList
+    //             data={tasks}
+    //             keyExtractor={(item) => item.taskId}
+    //             renderItem={renderTask}
+    //             contentContainerStyle={{ paddingBottom: 20 }}
+    //         />
+    //     </View>
+    //     </SafeAreaView>
+    // );
     return (
-        <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-            <FlatList
-                data={tasks}
-                keyExtractor={(item) => item.taskId}
-                renderItem={renderTask}
-                contentContainerStyle={{ paddingBottom: 20 }}
-            />
-        </View>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+            <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+                {/* Heading */}
+                <Text style={[styles.heading, { color: theme.colors.text }]}>
+                    Tasks Assigned for you By Super Admin
+                </Text>
+
+                <FlatList
+                    data={tasks}
+                    keyExtractor={(item) => item.taskId}
+                    renderItem={renderTask}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                />
+            </View>
+        </SafeAreaView>
     );
+
+
 };
 
 export default TasksScreen;
@@ -113,4 +136,10 @@ const styles = StyleSheet.create({
     taskTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
     statusButtons: { flexDirection: 'row', justifyContent: 'space-between' },
     statusButton: { flex: 1, padding: 8, marginHorizontal: 4, borderRadius: 4, alignItems: 'center' },
+    heading: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        marginBottom: 16,
+    }
+
 });
