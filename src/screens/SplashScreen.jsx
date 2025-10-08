@@ -12,8 +12,7 @@ import LinearGradient from "react-native-linear-gradient";
 
 export default function SplashScreen() {
     const navigation = useNavigation();
-    const scheme = useColorScheme(); // 'light' or 'dark'
-
+    const scheme = useColorScheme(); 
     useEffect(() => {
         const timer = setTimeout(() => {
             navigation.replace("Home"); // navigate after splash
@@ -27,15 +26,13 @@ export default function SplashScreen() {
     return (
         <LinearGradient
             colors={
-                isDark
-                    ? ["#000000", "#005BAC"] // Dark mode gradient
-                    : ["#FFFFFF", "#88C540"] // Light mode gradient
+                ["gray", "black", "red"]// Light mode gradient
             }
             style={styles.container}
         >
             {/* Company Logo */}
             <Image
-                source={require("../../assests/logo.png")}
+                source={require("../../assets/logo.png")}
                 style={styles.logo}
                 resizeMode="contain"
             />

@@ -9,6 +9,7 @@ import { ThemeContext } from '../../context/ThemeContext';
 import PremiumTasksModal from "../../components/ViewTaskModal";
 import { Animated, Pressable } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { green100 } from 'react-native-paper/lib/typescript/styles/themes/v2/colors';
 
 const { width } = Dimensions.get('window');
 
@@ -67,7 +68,6 @@ const AssignScreen = () => {
         return () => unsubscribe();
     }, [adminUid]);
 
-    // Apply filters independently
     useEffect(() => {
         let filtered = [...users];
 
@@ -223,7 +223,7 @@ const AssignScreen = () => {
                             {userTasks.length} Tasks
                         </Button>
                         <Button
-                            mode="contained"
+                            mode="contained-tonal"
                             onPress={() => openAssignModal(item)}
                             buttonColor={theme.colors.border}
                             textColor={theme.colors.text}
@@ -311,11 +311,16 @@ const AssignScreen = () => {
 
                         {/* User Filter Dropdown */}
                         <Menu
+                        mode='flat'
+                        style={{borderColor:theme.colors.card, borderCurve:0}}
+                       
                             visible={!!userFilter}
                             onDismiss={() => setUserFilter(null)}
                             anchor={
                                 <Button
-                                    mode="outlined"
+                                    mode="elevated"
+                                    buttonColor={theme.colors.card}
+                                    textColor={theme.colors.text}
                                     onPress={() => setUserFilter(userFilter ? null : 'most')}
                                     style={{ marginTop: 8, alignSelf: 'flex-start' }}
                                 >
@@ -352,20 +357,25 @@ const AssignScreen = () => {
                             <Text style={{ color: theme.colors.text, marginBottom: 12, fontSize: 20, fontWeight: '700' }}>Assign Task to {selectedUser?.name}</Text>
 
                             <TextInput
+                                mode='outlined'
                                 placeholder="Task Title"
                                 value={taskTitle}
                                 onChangeText={setTaskTitle}
-                                style={[styles.input, { color: theme.colors.text }]}
+                                style={[styles.input, { color: theme.colors.text,height:40 }]}
+                                outlineColor={theme.colors.primary}
+                                activeOutlineColor={theme.colors.border}
                             />
                             <TextInput
+                                mode='outlined'
                                 placeholder="Task Description"
                                 value={taskDescription}
                                 onChangeText={setTaskDescription}
-                                multiline
-                                style={[styles.input, { color: theme.colors.text, height: 50 }]}
+                                outlineColor={theme.colors.primary}
+                                activeOutlineColor={theme.colors.border}
+                                style={[styles.input, { color: theme.colors.text, height: 40 }]}
                             />
 
-                            <Button mode="outlined" onPress={() => setOpenDatePicker(true)} style={{ marginBottom: 12, borderRadius: 8 }}>
+                            <Button mode="outlined" onPress={() => setOpenDatePicker(true)} style={{ marginBottom: 12, borderRadius: 4,height:40,borderColor:theme.colors.primary,  }}  buttonColor={theme.colors.card} textColor={theme.colors.text}>
                                 Deadline: {taskDeadline.toDateString()}
                             </Button>
                             <DatePicker
@@ -378,16 +388,19 @@ const AssignScreen = () => {
                             />
 
                             <TextInput
+                                mode='outlined'
                                 placeholder="Remarks (comma separated)"
                                 value={taskRemarks}
                                 onChangeText={setTaskRemarks}
-                                style={[styles.input, { color: theme.colors.text }]}
+                                style={[styles.input, { color: theme.colors.text , height:40}]}
+                                outlineColor={theme.colors.primary}
+                                activeOutlineColor={theme.colors.border}
                             />
 
-                            <Button mode="contained" onPress={assignTask} style={{ marginBottom: 8, borderRadius: 8 }} buttonColor={theme.colors.primary}>
+                            <Button mode="contained" onPress={assignTask} style={{ marginBottom: 8, borderRadius: 8 }} buttonColor={theme.colors.primary} textColor={theme.colors.text} >
                                 Assign Task
                             </Button>
-                            <Button mode="text" onPress={() => setAssignModalVisible(false)} textColor={theme.colors.text}>
+                            <Button mode="outlined" style={{borderColor:theme.colors.secondary, borderRadius:5}} onPress={() => setAssignModalVisible(false)} textColor={theme.colors.text} buttonColor={theme.colors.card}>
                                 Cancel
                             </Button>
                         </Modal>
@@ -414,7 +427,7 @@ const styles = StyleSheet.create({
     userCard: { marginBottom: 12, borderRadius: 12, elevation: 2 },
     searchInput: { borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 12 },
     modalContent: { padding: 20, borderRadius: 12, marginHorizontal: 16 },
-    input: { borderWidth: 1, borderRadius: 8, padding: 10, marginBottom: 12 },
+    input: { borderWidth: 1, borderRadius: 8, padding: 4, marginBottom: 12 },
     badge: { position: 'absolute', top: 0, right: 0, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
     badgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 });

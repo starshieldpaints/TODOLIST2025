@@ -25,7 +25,7 @@ export default function App() {
       <PaperProvider>
       <ThemeProvider>
         <NavigationContainer>
-          <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+          <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false, }} >
             <Stack.Screen name="Splash" component={SplashScreen} />
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="login" component={LoginScreen} />

@@ -1,697 +1,24 @@
-// import React, { useState, useContext } from 'react';
-// import {
-//     View,
-//     Text,
-//     TextInput,
-//     TouchableOpacity,
-//     ActivityIndicator,
-//     KeyboardAvoidingView,
-//     Platform,
-//     ScrollView,
-//     StyleSheet,
-//     Alert,
-// } from 'react-native';
-// import auth from '@react-native-firebase/auth';
-// import firestore from '@react-native-firebase/firestore';
-// import { useNavigation } from '@react-navigation/native';
-// import { ThemeContext } from '../../context/ThemeContext';
-
-// const COLLECTIONS = { USERS: 'users' };
-// const USER_ROLES = { USER: 'user', ADMIN: 'admin', SUPERADMIN: 'superadmin' };
-// const DEFAULT_ADMIN_ID = 'MWtoCbA37jWTJKYa6yUsdDpIdd43';
-
-// export default function PhoneAuthScreen() {
-//     const { theme } = useContext(ThemeContext); // 🔹 Use theme
-//     const navigation = useNavigation();
-
-//     const [step, setStep] = useState('phone');
-//     const [loading, setLoading] = useState(false);
-//     const [phoneNumber, setPhoneNumber] = useState('');
-//     const [confirmation, setConfirmation] = useState(null);
-//     const [otp, setOtp] = useState('');
-//     const [userName, setUserName] = useState('');
-
-//     const sendOtp = async () => {
-//         if (!phoneNumber.trim()) return Alert.alert('Error', 'Enter your phone number');
-//         setLoading(true);
-//         try {
-//             const confirm = await auth().signInWithPhoneNumber(`+91${phoneNumber}`);
-//             setConfirmation(confirm);
-//             setStep('otp');
-//         } catch (err) {
-//             console.error(err);
-//             Alert.alert('Error', err.message);
-//         } finally {
-//             setLoading(false);
-//         }
-//     };
-
-//     const verifyOtp = async () => {
-//         if (!otp.trim()) return Alert.alert('Error', 'Enter OTP');
-//         setLoading(true);
-//         try {
-//             const credential = await confirmation.confirm(otp);
-//             const firebaseUser = credential.user;
-//             const userDoc = await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).get();
-//             if (userDoc.exists) {
-//                 const { role } = userDoc.data();
-//                 redirectByRole(role);
-//             } else {
-//                 setStep('name');
-//             }
-//         } catch (err) {
-//             console.error(err);
-//             Alert.alert('Error', 'Invalid OTP');
-//         } finally {
-//             setLoading(false);
-//         }
-//     };
-
-//     const saveUser = async () => {
-//         if (!userName.trim()) return Alert.alert('Error', 'Enter your name');
-//         setLoading(true);
-//         try {
-//             const firebaseUser = auth().currentUser;
-//             if (!firebaseUser) return Alert.alert('Error', 'User not found');
-
-//             const userData = {
-//                 uid: firebaseUser.uid,
-//                 email: firebaseUser.email || '',
-//                 role: USER_ROLES.USER,
-//                 name: userName.trim(),
-//                 adminId: DEFAULT_ADMIN_ID,
-//                 notificationPreferences: { push: true, email: false },
-//                 createdAt: firestore.FieldValue.serverTimestamp(),
-//                 phone: firebaseUser.phoneNumber,
-//             };
-
-//             await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).set(userData);
-//             redirectByRole(USER_ROLES.USER);
-//         } catch (err) {
-//             console.error(err);
-//             Alert.alert('Error', 'Failed to save user');
-//         } finally {
-//             setLoading(false);
-//         }
-//     };
-
-//     const redirectByRole = (role) => {
-//         switch (role) {
-//             case USER_ROLES.USER:
-//                 navigation.reset({ index: 0, routes: [{ name: 'user' }] });
-//                 break;
-//             case USER_ROLES.ADMIN:
-//                 navigation.reset({ index: 0, routes: [{ name: 'admin' }] });
-//                 break;
-//             case USER_ROLES.SUPERADMIN:
-//                 navigation.reset({ index: 0, routes: [{ name: 'superAdmin' }] });
-//                 break;
-//             default:
-//                 navigation.reset({ index: 0, routes: [{ name: 'phoneAuth' }] });
-//         }
-//     };
-
-//     return (
-//         <KeyboardAvoidingView
-//             style={[styles.container, { backgroundColor: theme.colors.background }]}
-//             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-//         >
-//             <ScrollView contentContainerStyle={styles.scrollContainer}>
-//                 <View style={[styles.box, { backgroundColor: theme.colors.card }]}>
-//                     <Text style={[styles.title, { color: '#FF0000' }]}>Task Manager</Text>
-//                     <Text style={[styles.subtitle, { color: '#88C540' }]}>Login / Signup with Phone</Text>
-
-//                     {step === 'phone' && (
-//                         <>
-//                             <TextInput
-//                                 style={[styles.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.primary, color: theme.colors.text }]}
-//                                 value={phoneNumber}
-//                                 onChangeText={setPhoneNumber}
-//                                 placeholder="Enter phone number"
-//                                 placeholderTextColor={theme.colors.border}
-//                                 keyboardType="phone-pad"
-//                                 maxLength={10}
-//                             />
-//                             <TouchableOpacity style={[styles.button, { backgroundColor: '#FF0000' }]} onPress={sendOtp} disabled={loading}>
-//                                 {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Send OTP</Text>}
-//                             </TouchableOpacity>
-//                         </>
-//                     )}
-
-//                     {step === 'otp' && (
-//                         <>
-//                             <TextInput
-//                                 style={[styles.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.primary, color: theme.colors.text }]}
-//                                 value={otp}
-//                                 onChangeText={setOtp}
-//                                 placeholder="Enter OTP"
-//                                 placeholderTextColor={theme.colors.border}
-//                                 keyboardType="number-pad"
-//                                 maxLength={6}
-//                             />
-//                             <TouchableOpacity style={[styles.button, { backgroundColor: '#FF0000' }]} onPress={verifyOtp} disabled={loading}>
-//                                 {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Verify OTP</Text>}
-//                             </TouchableOpacity>
-//                         </>
-//                     )}
-
-//                     {step === 'name' && (
-//                         <>
-//                             <TextInput
-//                                 style={[styles.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.primary, color: theme.colors.text }]}
-//                                 value={userName}
-//                                 onChangeText={setUserName}
-//                                 placeholder="Enter your name"
-//                                 placeholderTextColor={theme.colors.border}
-//                             />
-//                             <TouchableOpacity style={[styles.button, { backgroundColor: '#FF0000' }]} onPress={saveUser} disabled={loading}>
-//                                 {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Complete Registration</Text>}
-//                             </TouchableOpacity>
-//                         </>
-//                     )}
-//                 </View>
-//             </ScrollView>
-//         </KeyboardAvoidingView>
-//     );
-// }
-
-// const styles = StyleSheet.create({
-//     container: { flex: 1 },
-//     scrollContainer: { flexGrow: 1, justifyContent: 'center', padding: 20 },
-//     box: { borderRadius: 12, padding: 24, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, elevation: 5 },
-//     title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },
-//     subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 24 },
-//     input: { borderWidth: 1, borderRadius: 8, padding: 16, marginBottom: 16 },
-//     button: { borderRadius: 8, padding: 16, alignItems: 'center' },
-//     buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-// });
-
-
-
-
-
-
-
-
-
-
-
-
-// import React, { useState, useContext, useRef, useEffect } from 'react';
-// import {
-//     View,
-//     Text,
-//     TextInput,
-//     TouchableOpacity,
-//     ActivityIndicator,
-//     KeyboardAvoidingView,
-//     Platform,
-//     ScrollView,
-//     StyleSheet,
-//     Alert,
-//     Dimensions,
-// } from 'react-native';
-// import auth from '@react-native-firebase/auth';
-// import firestore from '@react-native-firebase/firestore';
-// import { useNavigation } from '@react-navigation/native';
-// import { useSafeAreaInsets } from 'react-native-safe-area-context';
-// import { ThemeContext } from '../../context/ThemeContext';
-// import Ionicons from 'react-native-vector-icons/Ionicons';
-
-// // --- Constants ---
-// const { width } = Dimensions.get('window');
-// const COLLECTIONS = { USERS: 'users' };
-// const USER_ROLES = { USER: 'user', ADMIN: 'admin', SUPERADMIN: 'superadmin' };
-// const DEFAULT_ADMIN_ID = 'MWtoCbA37jWTJKYa6yUsdDpIdd43';
-// const OTP_LENGTH = 6; // Define OTP length for validation and display
-
-// export default function PhoneAuthScreen() {
-//     const { theme } = useContext(ThemeContext);
-//     const navigation = useNavigation();
-//     const insets = useSafeAreaInsets();
-
-//     const [step, setStep] = useState('phone');
-//     const [loading, setLoading] = useState(false);
-//     const [phoneNumber, setPhoneNumber] = useState('');
-//     const [confirmation, setConfirmation] = useState(null);
-//     const [otp, setOtp] = useState('');
-//     const [userName, setUserName] = useState('');
-
-//     const otpInputRef = useRef(null); // Ref to manually focus OTP input
-
-//     const primaryColor = theme.colors.primary || '#4A90E2';
-//     const accentColor = theme.colors.accent || '#88C540';
-//     const cardColor = theme.dark ? theme.colors.card : '#FFFFFF';
-//     const textColor = theme.colors.text;
-//     const textSecondaryColor = theme.colors.textSecondary;
-
-//     // Auto-focus OTP input when stepping to OTP screen
-//     useEffect(() => {
-//         if (step === 'otp') {
-//             const timer = setTimeout(() => {
-//                 otpInputRef.current?.focus();
-//             }, 100);
-//             return () => clearTimeout(timer);
-//         }
-//     }, [step]);
-
-//     // --- Authentication Functions ---
-//     const sendOtp = async () => {
-//         const cleanedNumber = phoneNumber.replace(/[^0-9]/g, '');
-//         if (cleanedNumber.length !== 10) return Alert.alert('Invalid Number', 'Please enter a 10-digit phone number.');
-
-//         setLoading(true);
-//         try {
-//             const fullNumber = `+91${cleanedNumber}`;
-//             const confirm = await auth().signInWithPhoneNumber(fullNumber);
-//             setConfirmation(confirm);
-//             setStep('otp');
-//             Alert.alert('OTP Sent', `OTP has been sent to ${fullNumber}.`);
-//         } catch (err) {
-//             console.error(err);
-//             Alert.alert('Authentication Error', err.message);
-//         } finally {
-//             setLoading(false);
-//         }
-//     };
-
-//     const verifyOtp = async () => {
-//         if (otp.trim().length !== OTP_LENGTH) return Alert.alert('Error', `Please enter the ${OTP_LENGTH}-digit OTP.`);
-//         setLoading(true);
-
-//         try {
-//             const credential = await confirmation.confirm(otp);
-//             const firebaseUser = credential.user;
-
-//             // Fetch the user document
-//             const userDoc = await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).get();
-
-//             if (userDoc.exists) {
-//                 const userData = userDoc.data();
-
-//                 // ⭐️ FIX APPLIED HERE: Robust check for userData and userData.role ⭐️
-//                 if (userData && userData.role) {
-//                     const { role } = userData;
-//                     redirectByRole(role);
-//                 } else {
-//                     // Document exists but is empty or corrupt (missing role), treat as new user flow
-//                     console.warn("User document exists but is missing 'role' or data is empty.", userData);
-//                     setStep('name');
-//                 }
-//             } else {
-//                 // User document does not exist, proceed to registration step
-//                 setStep('name');
-//             }
-
-//         } catch (err) {
-//             console.error("OTP Verification Error:", err);
-//             Alert.alert('Verification Failed', 'The OTP is invalid or has expired. Please try again.');
-//         } finally {
-//             setLoading(false);
-//         }
-//     };
-
-//     const saveUser = async () => {
-//         if (!userName.trim()) return Alert.alert('Error', 'Please enter your name.');
-//         setLoading(true);
-//         try {
-//             const firebaseUser = auth().currentUser;
-//             if (!firebaseUser) {
-//                 setLoading(false);
-//                 return Alert.alert('Error', 'Authentication session lost. Please restart the process.');
-//             }
-
-//             const userData = {
-//                 uid: firebaseUser.uid,
-//                 email: firebaseUser.email || null,
-//                 role: USER_ROLES.USER,
-//                 name: userName.trim(),
-//                 adminId: DEFAULT_ADMIN_ID,
-//                 notificationPreferences: { push: true, email: false },
-//                 createdAt: firestore.FieldValue.serverTimestamp(),
-//                 phone: firebaseUser.phoneNumber,
-//             };
-
-//             await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).set(userData);
-//             redirectByRole(USER_ROLES.USER);
-//         } catch (err) {
-//             console.error(err);
-//             Alert.alert('Registration Error', 'Failed to complete registration. Please try again.');
-//         } finally {
-//             setLoading(false);
-//         }
-//     };
-
-//     const redirectByRole = (role) => {
-//         switch (role) {
-//             case USER_ROLES.USER:
-//                 navigation.reset({ index: 0, routes: [{ name: 'user' }] });
-//                 break;
-//             case USER_ROLES.ADMIN:
-//                 navigation.reset({ index: 0, routes: [{ name: 'admin' }] });
-//                 break;
-//             case USER_ROLES.SUPERADMIN:
-//                 navigation.reset({ index: 0, routes: [{ name: 'superadmin' }] });
-//                 break;
-//             default:
-//                 navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
-//         }
-//     };
-
-//     // Helper to generate the visual OTP boxes
-//     const renderOtpInputs = () => {
-//         const digits = otp.split('');
-//         const inputs = Array(OTP_LENGTH).fill(0).map((_, index) => {
-//             const isActive = index === digits.length;
-//             const isFilled = index < digits.length;
-
-//             return (
-//                 <View
-//                     key={index}
-//                     style={[
-//                         styles.otpDigit,
-//                         {
-//                             borderColor: isActive ? primaryColor : (isFilled ? accentColor : theme.colors.border),
-//                             backgroundColor: isActive ? theme.colors.card : theme.colors.background
-//                         }
-//                     ]}
-//                 >
-//                     <Text style={[styles.otpText, { color: textColor }]}>
-//                         {digits[index] || ''}
-//                     </Text>
-//                 </View>
-//             );
-//         });
-
-//         return (
-//             <View style={styles.otpVisualInput}>
-//                 {inputs}
-//                 {/* The actual TextInput is positioned absolutely on top */}
-//                 <TextInput
-//                     ref={otpInputRef}
-//                     style={styles.hiddenInput}
-//                     value={otp}
-//                     onChangeText={(text) => setOtp(text.replace(/[^0-9]/g, '').slice(0, OTP_LENGTH))}
-//                     keyboardType="number-pad"
-//                     maxLength={OTP_LENGTH}
-//                     editable={!loading}
-//                     autoFocus={step === 'otp'}
-//                     caretHidden={true} // Hide the cursor
-//                 />
-//             </View>
-//         );
-//     };
-
-//     // --- Render Content based on Step ---
-//     const renderContent = () => {
-//         switch (step) {
-//             case 'phone':
-//                 return (
-//                     <>
-//                         <Text style={[styles.label, { color: textSecondaryColor }]}>Enter your 10-digit phone number</Text>
-//                         <View style={[styles.inputGroup, { backgroundColor: cardColor, borderColor: theme.colors.border }]}>
-//                             <Text style={[styles.countryCode, { color: textColor, borderRightColor: theme.colors.border }]}>+91</Text>
-//                             <TextInput
-//                                 style={[styles.input, { color: textColor }]}
-//                                 value={phoneNumber}
-//                                 onChangeText={setPhoneNumber}
-//                                 placeholder="88888 88888"
-//                                 placeholderTextColor={theme.colors.placeholder}
-//                                 keyboardType="phone-pad"
-//                                 maxLength={10}
-//                                 editable={!loading}
-//                             />
-//                         </View>
-//                     </>
-//                 );
-//             case 'otp':
-//                 return (
-//                     <>
-//                         <Text style={[styles.label, styles.centerText, { color: textSecondaryColor }]}>
-//                             We've sent a {OTP_LENGTH}-digit code to **+91{phoneNumber}**
-//                         </Text>
-
-//                         {/* Custom OTP Grid (Replacing external library) */}
-//                         {renderOtpInputs()}
-
-//                         <TouchableOpacity style={styles.resendButton} onPress={() => Alert.alert('Resend Code', 'Functionality to resend code goes here.')} disabled={loading}>
-//                             <Text style={[styles.resendText, { color: accentColor }]}>Resend Code in 0:59</Text>
-//                         </TouchableOpacity>
-//                         <TouchableOpacity style={styles.resendButton} onPress={() => setStep('phone')} disabled={loading}>
-//                             <Text style={[styles.changeText, { color: textSecondaryColor }]}>Change Phone Number?</Text>
-//                         </TouchableOpacity>
-//                     </>
-//                 );
-//             case 'name':
-//                 return (
-//                     <>
-//                         <Text style={[styles.label, styles.centerText, { color: textSecondaryColor }]}>
-//                             Welcome! What should we call you?
-//                         </Text>
-//                         <TextInput
-//                             style={[styles.inputGroup, styles.input, { backgroundColor: cardColor, borderColor: theme.colors.border, color: textColor, paddingHorizontal: 15, width: '100%', }]}
-//                             value={userName}
-//                             onChangeText={setUserName}
-//                             placeholder="Your Full Name"
-//                             placeholderTextColor={theme.colors.placeholder}
-//                             keyboardType="default"
-//                             editable={!loading}
-//                         />
-//                     </>
-//                 );
-//             default:
-//                 return null;
-//         }
-//     };
-
-//     const getButtonAction = () => {
-//         switch (step) {
-//             case 'phone': return sendOtp;
-//             case 'otp': return verifyOtp;
-//             case 'name': return saveUser;
-//             default: return () => { };
-//         }
-//     };
-
-//     const getButtonText = () => {
-//         switch (step) {
-//             case 'phone': return 'Send OTP';
-//             case 'otp': return 'Verify & Continue';
-//             case 'name': return 'Complete Profile';
-//             default: return 'Next';
-//         }
-//     };
-
-//     return (
-//         <KeyboardAvoidingView
-//             style={[styles.container, { backgroundColor: theme.colors.background, paddingBottom: insets.bottom }]}
-//             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-//             keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 44 : 0}
-//         >
-//             <ScrollView
-//                 contentContainerStyle={styles.scrollContainer}
-//                 keyboardShouldPersistTaps="handled"
-//                 showsVerticalScrollIndicator={false}
-//             >
-//                 {/* Visual Element */}
-//                 <View style={styles.visualContainer}>
-//                     <Ionicons name="finger-print-outline" size={80} color={primaryColor} />
-//                 </View>
-
-//                 {/* Text Header */}
-//                 <View style={styles.headerContainer}>
-//                     <Text style={[styles.title, { color: textColor }]}>
-//                         {step === 'phone' && 'Welcome Back'}
-//                         {step === 'otp' && 'One-Time Passcode'}
-//                         {step === 'name' && 'Profile Setup'}
-//                     </Text>
-//                     <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
-//                         {step === 'phone' && 'Log in or sign up with your phone number.'}
-//                         {step === 'otp' && 'Please check your SMS for the code.'}
-//                         {step === 'name' && 'Just one more step to start using the app!'}
-//                     </Text>
-//                 </View>
-
-//                 {/* Main Content Card */}
-//                 <View style={[styles.contentWrapper]}>
-//                     {renderContent()}
-//                 </View>
-
-//             </ScrollView>
-
-//             {/* Floating/Fixed Bottom Button */}
-//             <View style={[styles.floatingButtonContainer, { paddingBottom: insets.bottom + 20 }]}>
-//                 <TouchableOpacity
-//                     style={[styles.button, { backgroundColor: primaryColor, opacity: loading ? 0.7 : 1 }]}
-//                     onPress={getButtonAction()}
-//                     disabled={loading}
-//                 >
-//                     {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>{getButtonText()}</Text>}
-//                 </TouchableOpacity>
-//             </View>
-//         </KeyboardAvoidingView>
-//     );
-// }
-
-// const styles = StyleSheet.create({
-//     container: {
-//         flex: 1,
-//     },
-//     scrollContainer: {
-//         flexGrow: 1,
-//         paddingHorizontal: 25,
-//         paddingTop: 50,
-//         paddingBottom: 120,
-//     },
-//     visualContainer: {
-//         alignItems: 'center',
-//         marginBottom: 30,
-//     },
-//     headerContainer: {
-//         marginBottom: 40,
-//     },
-//     title: {
-//         fontSize: 32,
-//         fontWeight: '800',
-//         textAlign: 'center',
-//         marginBottom: 8,
-//     },
-//     subtitle: {
-//         fontSize: 16,
-//         fontWeight: '500',
-//         textAlign: 'center',
-//     },
-//     contentWrapper: {
-//         width: '100%',
-//         alignItems: 'center',
-//     },
-//     label: {
-//         fontSize: 16,
-//         marginBottom: 10,
-//         fontWeight: '600',
-//     },
-//     centerText: {
-//         textAlign: 'center',
-//     },
-//     inputGroup: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         borderWidth: 1,
-//         borderRadius: 12,
-//         marginBottom: 20,
-//         height: 60,
-//         width: '100%',
-//     },
-//     countryCode: {
-//         fontSize: 18,
-//         fontWeight: 'bold',
-//         marginHorizontal: 15,
-//         borderRightWidth: 1,
-//         paddingRight: 15,
-//     },
-//     input: {
-//         flex: 1,
-//         fontSize: 18,
-//         height: '100%',
-//         padding: 0,
-//     },
-//     // --- Custom OTP Grid Styles ---
-//     otpVisualInput: {
-//         flexDirection: 'row',
-//         justifyContent: 'space-between',
-//         marginVertical: 30,
-//         height: 60,
-//         position: 'relative',
-//     },
-//     otpDigit: {
-//         width: 45,
-//         height: 60,
-//         borderRadius: 10,
-//         borderWidth: 2,
-//         justifyContent: 'center',
-//         alignItems: 'center',
-//     },
-//     otpText: {
-//         fontSize: 24,
-//         fontWeight: '700',
-//     },
-//     hiddenInput: {
-//         position: 'absolute',
-//         top: 0,
-//         bottom: 0,
-//         left: 0,
-//         right: 0,
-//         opacity: 0, // Make the actual input invisible
-//         fontSize: 1,
-//         height: '100%',
-//     },
-//     // --- End Custom OTP Grid Styles ---
-//     floatingButtonContainer: {
-//         position: 'absolute',
-//         bottom: 0,
-//         left: 0,
-//         right: 0,
-//         backgroundColor: 'transparent',
-//         paddingHorizontal: 25,
-//         paddingTop: 10,
-//     },
-//     button: {
-//         borderRadius: 12,
-//         padding: 18,
-//         alignItems: 'center',
-//         justifyContent: 'center',
-//         height: 60,
-//     },
-//     buttonText: {
-//         color: '#FFFFFF',
-//         fontSize: 18,
-//         fontWeight: '700',
-//     },
-//     resendButton: {
-//         padding: 5,
-//         marginTop: 5,
-//         alignItems: 'center',
-//     },
-//     resendText: {
-//         fontSize: 16,
-//         fontWeight: '700',
-//     },
-//     changeText: {
-//         fontSize: 14,
-//         fontWeight: '500',
-//         marginTop: 10,
-//     }
-// });
-
-
-
-
-
-
-
-
-
-
-
-
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import {
     View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    ActivityIndicator,
+    StyleSheet,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
-    StyleSheet,
-    Alert,
+    Alert, // Keep native Alert for simplicity
     Dimensions,
 } from 'react-native';
+// 💡 Import React Native Paper components
+import {
+    TextInput,
+    Button,
+    Text,
+    ActivityIndicator,
+    useTheme as usePaperTheme, // To access RNP theme defaults if needed
+} from 'react-native-paper';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
-// Note: You must wrap your app root with <SafeAreaProvider> to use useSafeAreaInsets
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemeContext } from '../../context/ThemeContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -700,11 +27,11 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 const { width } = Dimensions.get('window');
 const COLLECTIONS = { USERS: 'users' };
 const USER_ROLES = { USER: 'user', ADMIN: 'admin', SUPERADMIN: 'superadmin' };
-
 const OTP_LENGTH = 6;
 
 export default function PhoneAuthScreen() {
-    const { theme } = useContext(ThemeContext);
+    const { theme } = useContext(ThemeContext); // Custom theme hook
+    const paperTheme = usePaperTheme();
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
 
@@ -714,14 +41,21 @@ export default function PhoneAuthScreen() {
     const [confirmation, setConfirmation] = useState(null);
     const [otp, setOtp] = useState('');
     const [userName, setUserName] = useState('');
+    // ⬇️ UPDATED STATES FOR ONBOARDING
+    const [userEmail, setUserEmail] = useState('');
+    const [addressLine, setAddressLine] = useState('');
+    const [city, setCity] = useState('');
+    const [state, setState] = useState('');
+    const [country, setCountry] = useState('');
 
     const otpInputRef = useRef(null);
 
-    const primaryColor = theme.colors.primary || '#4A90E2'; // Modern Blue
-    const accentColor = theme.colors.accent || '#88C540';   // Green Accent
-    const cardColor = theme.dark ? theme.colors.card : '#FFFFFF';
-    const textColor = theme.colors.text;
-    const textSecondaryColor = theme.colors.textSecondary;
+    // Color definitions using both custom and RNP theme fallback
+    const primaryColor = theme.colors.primary || paperTheme.colors.primary;
+    const accentColor = theme.colors.accent || paperTheme.colors.accent;
+    const textColor = theme.colors.text || paperTheme.colors.onSurface;
+    const textSecondaryColor = theme.colors.textSecondary || paperTheme.colors.onSurfaceVariant;
+
 
     // Auto-focus OTP input when stepping to OTP screen
     useEffect(() => {
@@ -733,14 +67,13 @@ export default function PhoneAuthScreen() {
         }
     }, [step]);
 
-    // --- Authentication Functions ---
+    // --- Authentication Functions (Logic remains mostly the same) ---
     const sendOtp = async () => {
         const cleanedNumber = phoneNumber.replace(/[^0-9]/g, '');
         if (cleanedNumber.length !== 10) return Alert.alert('Invalid Number', 'Please enter a 10-digit phone number.');
 
         setLoading(true);
         try {
-            // NOTE: Replace +91 with a country picker for global use
             const fullNumber = `+91${cleanedNumber}`;
             const confirm = await auth().signInWithPhoneNumber(fullNumber);
             setConfirmation(confirm);
@@ -761,25 +94,37 @@ export default function PhoneAuthScreen() {
         try {
             const credential = await confirmation.confirm(otp);
             const firebaseUser = credential.user;
-
-            // Fetch the user document
             const userDoc = await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).get();
 
             if (userDoc.exists) {
                 const userData = userDoc.data();
+                const hasRole = userData && userData.role;
+                const hasEmail = userData && userData.email;
+                // Check if address is complete (presence of addressLine is a good proxy, but we'll check all fields during saving)
+                const hasAddress = userData && userData.address && userData.address.addressLine && userData.address.city && userData.address.state && userData.address.country;
 
-                // ⭐️ CORRECTED FIX: Safely check for data and role existence ⭐️
-                if (userData && userData.role) {
-                    const { role } = userData;
-                    redirectByRole(role);
-                } else {
-                    // Document exists but is empty or missing role. Default to registration.
-                    console.warn("User document exists but is missing 'role'. Proceeding to setup.");
+                if (hasRole && hasEmail && hasAddress) {
+                    // Existing user with all required fields
+                    redirectByRole(userData.role);
+                } else if (!hasEmail) {
+                    // Existing user missing email
+                    setUserEmail(userData?.email || firebaseUser.email || '');
+                    setStep('email');
+                } else if (!hasAddress) {
+                    // Existing user missing address, pre-fill if partial data exists
+                    setAddressLine(userData?.address?.addressLine || '');
+                    setCity(userData?.address?.city || '');
+                    setState(userData?.address?.state || '');
+                    setCountry(userData?.address?.country || '');
+                    setStep('fullAddress'); // 💡 NEW STEP NAME
+                } else if (!hasRole) {
+                    // Existing user missing role, proceed to name setup
                     setStep('name');
                 }
+
             } else {
-                // User document does not exist, proceed to new user registration
-                setStep('name');
+                // New user, proceed to initial setup (name is the first new user step in the original code, but we'll use email first as it's often simpler)
+                setStep('email'); // Start new user flow with Email
             }
 
         } catch (err) {
@@ -790,6 +135,93 @@ export default function PhoneAuthScreen() {
         }
     };
 
+    // ⬇️ FUNCTION: Save Email
+    const saveUserEmail = async () => {
+        if (!userEmail.trim() || !userEmail.includes('@')) {
+            return Alert.alert('Error', 'Please enter a valid email address.');
+        }
+        setLoading(true);
+        try {
+            const firebaseUser = auth().currentUser;
+            if (!firebaseUser) throw new Error('Authentication session lost.');
+
+            await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).set(
+                { email: userEmail.trim().toLowerCase(), updatedAt: firestore.FieldValue.serverTimestamp() },
+                { merge: true }
+            );
+
+            // Move to full address collection
+            const userDoc = await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).get();
+            const userData = userDoc.data();
+            const hasAddress = userData && userData.address && userData.address.addressLine;
+
+            // Check if address is complete before setting state for fullAddress step
+            if (!hasAddress) {
+                setStep('fullAddress');
+            } else {
+                // If they have address but not name/role (e.g., they partially onboarded before)
+                if (!userData.role) {
+                    setStep('name');
+                } else {
+                    redirectByRole(userData.role);
+                }
+            }
+
+
+        } catch (err) {
+            console.error("Email Save Error:", err);
+            Alert.alert('Update Error', 'Failed to save email. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // ⬇️ NEW FUNCTION: Save Full Address
+    const saveFullAddress = async () => {
+        if (!addressLine.trim() || !city.trim() || !state.trim() || !country.trim()) {
+            return Alert.alert('Missing Field', 'Please fill in all address fields (Address Line, City, State, Country) to continue.');
+        }
+        setLoading(true);
+        try {
+            const firebaseUser = auth().currentUser;
+            if (!firebaseUser) throw new Error('Authentication session lost.');
+
+            const addressData = {
+                address: {
+                    addressLine: addressLine.trim(),
+                    city: city.trim(),
+                    state: state.trim(),
+                    country: country.trim(),
+                    // Optionally add geo location here if you collect it later
+                },
+                updatedAt: firestore.FieldValue.serverTimestamp(),
+            };
+
+            await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).set(
+                addressData,
+                { merge: true }
+            );
+
+            // Now move to name/role setup (original 'name' step logic)
+            const userDoc = await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).get();
+            const userData = userDoc.data();
+
+            if (!userData.role) {
+                setStep('name'); // Move to name setup
+            } else {
+                redirectByRole(userData.role); // Finish setup
+            }
+
+        } catch (err) {
+            console.error("Address Save Error:", err);
+            Alert.alert('Update Error', 'Failed to save address. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+    // 🔄 MODIFIED FUNCTION: Simplified as email and address are collected before this
     const saveUser = async () => {
         if (!userName.trim()) return Alert.alert('Error', 'Please enter your name.');
         setLoading(true);
@@ -800,17 +232,23 @@ export default function PhoneAuthScreen() {
                 return Alert.alert('Error', 'Authentication session lost. Please restart the process.');
             }
 
+            // Fetch existing data (which should now include email and address from previous steps)
+            const userDoc = await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).get();
+            const existingData = userDoc.data() || {};
+
             const userData = {
                 uid: firebaseUser.uid,
-                email: firebaseUser.email || null,
-                role: USER_ROLES.USER,
+                email: existingData.email || firebaseUser.email || null,
+                address: existingData.address || null,
+                role: USER_ROLES.USER, // Default role for new signups
                 name: userName.trim(),
-                notificationPreferences: { push: true, email: false },
-                createdAt: firestore.FieldValue.serverTimestamp(),
+                notificationPreferences: existingData.notificationPreferences || { push: false, email: false },
+                createdAt: existingData.createdAt || firestore.FieldValue.serverTimestamp(),
                 phone: firebaseUser.phoneNumber,
+                updatedAt: firestore.FieldValue.serverTimestamp(),
             };
 
-            await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).set(userData);
+            await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).set(userData, { merge: true });
             redirectByRole(USER_ROLES.USER);
         } catch (err) {
             console.error(err);
@@ -836,7 +274,7 @@ export default function PhoneAuthScreen() {
         }
     };
 
-    // Helper to generate the visual OTP boxes (Custom Grid)
+    // Helper to generate the visual OTP boxes (Custom Grid) - Unchanged
     const renderOtpInputs = () => {
         const digits = otp.split('');
         const inputs = Array(OTP_LENGTH).fill(0).map((_, index) => {
@@ -864,7 +302,7 @@ export default function PhoneAuthScreen() {
         return (
             <View style={styles.otpVisualInput}>
                 {inputs}
-                {/* Hidden TextInput overlaid to handle actual input */}
+                {/* Hidden RNP TextInput overlaid to handle actual input */}
                 <TextInput
                     ref={otpInputRef}
                     style={styles.hiddenInput}
@@ -874,7 +312,10 @@ export default function PhoneAuthScreen() {
                     maxLength={OTP_LENGTH}
                     editable={!loading}
                     autoFocus={step === 'otp'}
-                    caretHidden={true} // Hide the cursor
+                    caretHidden={true}
+                    mode="flat"
+                    underlineColor="transparent"
+                    activeUnderlineColor="transparent"
                 />
             </View>
         );
@@ -886,64 +327,157 @@ export default function PhoneAuthScreen() {
             case 'phone':
                 return (
                     <>
-                        <Text style={[styles.label, { color: textSecondaryColor }]}>Enter your 10-digit phone number</Text>
-                        <View style={[styles.inputGroup, { backgroundColor: cardColor, borderColor: theme.colors.border }]}>
-                            <Text style={[styles.countryCode, { color: textColor, borderRightColor: theme.colors.border }]}>+91</Text>
-                            <TextInput
-                                style={[styles.input, { color: textColor }]}
-                                value={phoneNumber}
-                                onChangeText={setPhoneNumber}
-                                placeholder="88888 88888"
-                                placeholderTextColor={theme.colors.placeholder}
-                                keyboardType="phone-pad"
-                                maxLength={10}
-                                editable={!loading}
-                            />
-                        </View>
+                        <Text variant="bodyLarge" style={[styles.label, { color: textSecondaryColor }]}>
+                            Enter your 10-digit phone number
+                        </Text>
+                        <TextInput
+                            label="Phone Number"
+                            value={phoneNumber}
+                            onChangeText={(text) => setPhoneNumber(text.replace(/[^0-9]/g, '').slice(0, 10))}
+                            mode="outlined"
+                            style={styles.rnpInput}
+                            keyboardType="phone-pad"
+                            maxLength={10}
+                            editable={!loading}
+                            left={
+                                <TextInput.Affix
+                                    text="+91"
+                                    textStyle={{ color: textColor, fontWeight: 'bold' }}
+                                />
+                            }
+                        />
                     </>
                 );
             case 'otp':
                 return (
                     <>
-                        <Text style={[styles.label, styles.centerText, { color: textSecondaryColor }]}>
+                        <Text variant="bodyLarge" style={[styles.label, styles.centerText, { color: textSecondaryColor, marginBottom: 10 }]}>
                             We've sent a {OTP_LENGTH}-digit code to **+91{phoneNumber}**
                         </Text>
-
+                        <Text variant="bodyMedium" style={[styles.centerText, { color: textSecondaryColor, marginBottom: 20 }]}>
+                            Please check your SMS.
+                        </Text>
                         {renderOtpInputs()}
-
-                        <TouchableOpacity style={styles.resendButton} onPress={() => Alert.alert('Resend Code', 'Functionality to resend code goes here.')} disabled={loading}>
-                            <Text style={[styles.resendText, { color: accentColor }]}>Resend Code in 0:59</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.resendButton} onPress={() => setStep('phone')} disabled={loading}>
-                            <Text style={[styles.changeText, { color: textSecondaryColor }]}>Change Phone Number?</Text>
-                        </TouchableOpacity>
+                        <Button
+                            mode="text"
+                            onPress={() => Alert.alert('Resend Code', 'Functionality to resend code goes here.')}
+                            disabled={loading}
+                            style={styles.resendButton}
+                            labelStyle={{ color: accentColor, fontWeight: '700' }}
+                        >
+                            Resend Code in 0:59
+                        </Button>
+                        <Button
+                            mode="text"
+                            onPress={() => setStep('phone')}
+                            disabled={loading}
+                            style={styles.resendButton}
+                            labelStyle={{ color: textSecondaryColor, fontSize: 14 }}
+                        >
+                            Change Phone Number?
+                        </Button>
                     </>
                 );
-            case 'name':
+            // ⬇️ STEP: Collect Email
+            case 'email':
                 return (
                     <>
-                        <Text style={[styles.label, styles.centerText, { color: textSecondaryColor }]}>
-                            Welcome! What should we call you?
+                        <Text variant="bodyLarge" style={[styles.label, styles.centerText, { color: textSecondaryColor }]}>
+                            Please provide your email for important updates.
                         </Text>
-                        {/* Modernized Name Input */}
-                        <View style={[styles.inputGroup, { backgroundColor: cardColor, borderColor: theme.colors.border, paddingHorizontal: 0 }]}>
-                            <Ionicons
-                                name="person-outline"
-                                size={20}
-                                color={theme.colors.textSecondary}
-                                style={styles.inputIcon}
+                        <TextInput
+                            label="Email Address"
+                            value={userEmail}
+                            onChangeText={setUserEmail}
+                            mode="outlined"
+                            style={styles.rnpInput}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoFocus={true}
+                            editable={!loading}
+                            left={
+                                <TextInput.Icon
+                                    icon="email-outline"
+                                    color={textSecondaryColor}
+                                />
+                            }
+                        />
+                    </>
+                );
+
+            // ⬇️ NEW STEP: Collect Full Address
+            case 'fullAddress':
+                return (
+                    <>
+                        <Text variant="bodyLarge" style={[styles.label, styles.centerText, { color: textSecondaryColor }]}>
+                            Please enter your full address for delivery purposes.
+                        </Text>
+                        <TextInput
+                            label="Address Line (Flat, Street, Area)"
+                            value={addressLine}
+                            onChangeText={setAddressLine}
+                            mode="outlined"
+                            style={styles.rnpInput}
+                            keyboardType="default"
+                            autoFocus={true}
+                            editable={!loading}
+                            multiline={true}
+                            numberOfLines={2}
+                        />
+                        <View style={styles.inlineInputs}>
+                            <TextInput
+                                label="City"
+                                value={city}
+                                onChangeText={setCity}
+                                mode="outlined"
+                                style={[styles.rnpInput, styles.halfInput]}
+                                keyboardType="default"
+                                editable={!loading}
                             />
                             <TextInput
-                                style={[styles.input, { color: textColor, paddingHorizontal: 15 }]}
-                                value={userName}
-                                onChangeText={setUserName}
-                                placeholder="Your Full Name"
-                                placeholderTextColor={theme.colors.placeholder}
+                                label="State"
+                                value={state}
+                                onChangeText={setState}
+                                mode="outlined"
+                                style={[styles.rnpInput, styles.halfInput]}
                                 keyboardType="default"
-                                autoFocus={true}
                                 editable={!loading}
                             />
                         </View>
+                        <TextInput
+                            label="Country"
+                            value={country}
+                            onChangeText={setCountry}
+                            mode="outlined"
+                            style={styles.rnpInput}
+                            keyboardType="default"
+                            editable={!loading}
+                        />
+                    </>
+                );
+
+            case 'name':
+                return (
+                    <>
+                        <Text variant="bodyLarge" style={[styles.label, styles.centerText, { color: textSecondaryColor }]}>
+                            Welcome! What should we call you?
+                        </Text>
+                        <TextInput
+                            label="Your Full Name"
+                            value={userName}
+                            onChangeText={setUserName}
+                            mode="outlined"
+                            style={styles.rnpInput}
+                            keyboardType="default"
+                            autoFocus={true}
+                            editable={!loading}
+                            left={
+                                <TextInput.Icon
+                                    icon="account-outline"
+                                    color={textSecondaryColor}
+                                />
+                            }
+                        />
                     </>
                 );
             default:
@@ -951,24 +485,54 @@ export default function PhoneAuthScreen() {
         }
     };
 
-    // Helper functions for the main action button
+    // 🔄 MODIFIED FUNCTION: Helper functions for the main action button
     const getButtonAction = () => {
         switch (step) {
-            case 'phone': return sendOtp;
-            case 'otp': return verifyOtp;
-            case 'name': return saveUser;
+            case 'phone': return () => sendOtp();
+            case 'otp': return () => verifyOtp();
+            case 'email': return () => saveUserEmail();
+            case 'fullAddress': return () => saveFullAddress(); // 💡 NEW ACTION
+            case 'name': return () => saveUser();
             default: return () => { };
         }
     };
 
+    // 🔄 MODIFIED FUNCTION: Helper function for button text
     const getButtonText = () => {
         switch (step) {
             case 'phone': return 'Send OTP';
             case 'otp': return 'Verify & Continue';
+            case 'email': return 'Save Email & Continue';
+            case 'fullAddress': return 'Save Address & Continue'; // 💡 NEW TEXT
             case 'name': return 'Complete Profile';
             default: return 'Next';
         }
     };
+
+    // 🔄 MODIFIED FUNCTION: Helper function for the main title
+    const getTitleText = () => {
+        switch (step) {
+            case 'phone': return 'Secure Login';
+            case 'otp': return 'One-Time Passcode';
+            case 'email': return 'Email Collection';
+            case 'fullAddress': return 'Shipping Address'; // 💡 NEW TEXT
+            case 'name': return 'Profile Setup';
+            default: return 'Login';
+        }
+    };
+
+    // 🔄 MODIFIED FUNCTION: Helper function for the subtitle
+    const getSubtitleText = () => {
+        switch (step) {
+            case 'phone': return 'Log in or sign up with your phone number.';
+            case 'otp': return 'Please check your SMS for the code.';
+            case 'email': return 'This helps with order confirmations and account security.';
+            case 'fullAddress': return 'We need your complete address for delivery services.'; // 💡 NEW TEXT
+            case 'name': return 'Just one more step to start using the app!';
+            default: return '';
+        }
+    };
+
 
     return (
         <KeyboardAvoidingView
@@ -986,17 +550,13 @@ export default function PhoneAuthScreen() {
                     <Ionicons name="finger-print-outline" size={80} color={primaryColor} />
                 </View>
 
-                {/* Text Header */}
+                {/* Text Header - Using RNP Text components */}
                 <View style={styles.headerContainer}>
-                    <Text style={[styles.title, { color: textColor }]}>
-                        {step === 'phone' && 'Welcome Back'}
-                        {step === 'otp' && 'One-Time Passcode'}
-                        {step === 'name' && 'Profile Setup'}
+                    <Text variant="headlineLarge" style={[styles.title, { color: textColor }]}>
+                        {getTitleText()}
                     </Text>
-                    <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
-                        {step === 'phone' && 'Log in or sign up with your phone number.'}
-                        {step === 'otp' && 'Please check your SMS for the code.'}
-                        {step === 'name' && 'Just one more step to start using the app!'}
+                    <Text variant="bodyLarge" style={[styles.subtitle, { color: textSecondaryColor }]}>
+                        {getSubtitleText()}
                     </Text>
                 </View>
 
@@ -1007,15 +567,29 @@ export default function PhoneAuthScreen() {
 
             </ScrollView>
 
-            {/* Floating/Fixed Bottom Button */}
+            {/* Floating/Fixed Bottom Button - Using RNP Button */}
             <View style={[styles.floatingButtonContainer, { paddingBottom: insets.bottom + 20 }]}>
-                <TouchableOpacity
-                    style={[styles.button, { backgroundColor: primaryColor, opacity: loading ? 0.7 : 1 }]}
+                <Button
+                    mode="contained"
                     onPress={getButtonAction()}
+                    loading={loading}
+                    style={styles.button}
+                    contentStyle={styles.buttonContent}
                     disabled={loading}
+                    labelStyle={styles.buttonText}
                 >
-                    {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>{getButtonText()}</Text>}
-                </TouchableOpacity>
+                    {getButtonText()}
+                </Button>
+                {/* Link to go back to regular Login */}
+                <Button
+                    mode="text"
+                    onPress={() => navigation.navigate('login')}
+                    compact
+                    style={{ marginTop: 10, alignSelf: 'center' }}
+                    labelStyle={{ fontSize: 14 }}
+                >
+                    Use Email/Password Login
+                </Button>
             </View>
         </KeyboardAvoidingView>
     );
@@ -1029,7 +603,7 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         paddingHorizontal: 25,
         paddingTop: 50,
-        paddingBottom: 120, // Space for the floating button
+        paddingBottom: 150, // Space for the floating button
     },
     visualContainer: {
         alignItems: 'center',
@@ -1054,49 +628,39 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     label: {
-        fontSize: 16,
         marginBottom: 10,
         fontWeight: '600',
+        alignSelf: 'flex-start', // Align label left
     },
     centerText: {
         textAlign: 'center',
     },
-    inputGroup: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderRadius: 12,
+    // RNP TextInput styling
+    rnpInput: {
+        width: '100%',
         marginBottom: 20,
-        height: 60,
+    },
+    // 💡 NEW STYLE: For side-by-side inputs
+    inlineInputs: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         width: '100%',
     },
-    countryCode: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginHorizontal: 15,
-        borderRightWidth: 1,
-        paddingRight: 15,
+    halfInput: {
+        width: '48%',
+        marginBottom: 20,
     },
-    inputIcon: {
-        marginLeft: 15,
-        marginRight: 10,
-    },
-    input: {
-        flex: 1,
-        fontSize: 18,
-        height: '100%',
-        padding: 0,
-    },
-    // --- Custom OTP Grid Styles ---
+    // --- Custom OTP Grid Styles (unchanged) ---
     otpVisualInput: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginVertical: 30,
         height: 60,
         position: 'relative',
+        width: '100%',
     },
     otpDigit: {
-        width: 45,
+        width: width / (OTP_LENGTH + 2), // Dynamic width to fit 6 boxes with padding
         height: 60,
         borderRadius: 10,
         borderWidth: 2,
@@ -1108,12 +672,13 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     hiddenInput: {
+        // Overlay the entire area to capture input
         position: 'absolute',
         top: 0,
         bottom: 0,
         left: 0,
         right: 0,
-        opacity: 0,
+        opacity: 0, // Make it invisible
         fontSize: 1,
         height: '100%',
     },
@@ -1129,10 +694,12 @@ const styles = StyleSheet.create({
     },
     button: {
         borderRadius: 12,
-        padding: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
         height: 60,
+        justifyContent: 'center',
+        elevation: 4,
+    },
+    buttonContent: {
+        paddingVertical: 4,
     },
     buttonText: {
         color: '#FFFFFF',
@@ -1142,15 +709,6 @@ const styles = StyleSheet.create({
     resendButton: {
         padding: 5,
         marginTop: 5,
-        alignItems: 'center',
+        alignSelf: 'center',
     },
-    resendText: {
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    changeText: {
-        fontSize: 14,
-        fontWeight: '500',
-        marginTop: 10,
-    }
 });

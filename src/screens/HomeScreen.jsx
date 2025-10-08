@@ -12,7 +12,7 @@ export default function HomeScreen({ navigation }) {
     const scheme = useColorScheme();
     const isDark = scheme === "dark";
 
-    const gradientColors = isDark ? ["#000000", "#005BAC"] : ["#FFFFFF", "#88C540"];
+    const gradientColors = ["gray", "black", "red"];
 
     const features = [
         { icon: "check-circle", text: "Organize your tasks efficiently" },
@@ -37,10 +37,11 @@ export default function HomeScreen({ navigation }) {
                 
                 if (role === "admin") navigation.replace("admin");
                 else if (role === "superadmin") navigation.replace("superAdmin");
-                else navigation.replace("user");
+                else if (role === 'user') navigation.replace("user")
+                else navigation.replace("Home");
             } catch (error) {
                 console.log("Error fetching user role:", error);
-                navigation.replace("login");
+                navigation.replace("Home");
             }
         };
 
@@ -51,13 +52,13 @@ export default function HomeScreen({ navigation }) {
 
 
     return (
-        <SafeAreaView style={{ flex: 1 }}>
+
             <LinearGradient colors={gradientColors} style={styles.container}>
                 <ScrollView contentContainerStyle={styles.scrollContainer}>
                     {/* Logo & Title */}
                     <View style={styles.logoContainer}>
                         <Image
-                            source={require("../../assests/logo.png")}
+                            source={require("../../assets/logo.png")}
                             style={styles.logo}
                             resizeMode="contain"
                         />
@@ -124,7 +125,7 @@ export default function HomeScreen({ navigation }) {
                     </View>
                 </ScrollView>
             </LinearGradient>
-        </SafeAreaView>
+   
     );
 }
 

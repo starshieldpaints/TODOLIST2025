@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useCallback } from 'react'; // 1. ADD useCallback
 import {
     View,
     Text,
@@ -19,12 +19,11 @@ import {
     Modal,
 } from 'react-native-paper';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-// 🌟 Use the REAL ThemeContext 🌟
-import { ThemeContext } from '../../context/ThemeContext'; // Assuming this path is correct
-// 🔄 USING react-native-date-picker 🔄
+import { ThemeContext } from '../../context/ThemeContext';
 import DatePicker from 'react-native-date-picker';
+// 🌟 NEW: IMPORT useFocusEffect FOR RE-FETCH ON TAB CHANGE 🌟
+import { useFocusEffect } from '@react-navigation/native';
 
-// ⚠️ REAL FIREBASE INTEGRATION ⚠️
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 // ----------------------------------------------------------------------
@@ -36,32 +35,87 @@ const useScreenWidth = () => {
     return screenWidth;
 };
 
-// --- Standalone Card Components (UI only) ---
+// ... (Your handleMakeAdmin function remains the same) ...
+const handleMakeAdmin = async (userToPromote, setUsers, setAdmins, setIsLoading, handleDismiss) => {
+
+    // 1. Pre-Check for valid user
+    if (!userToPromote || userToPromote.role?.toLowerCase() !== 'user') {
+        Alert.alert("Error", "Invalid user selected for promotion, or user is already an admin.");
+        return;
+    }
+
+    // 2. Confirmation Alert
+    Alert.alert(
+        'Confirm Promotion',
+        `Are you sure you want to promote ${userToPromote.name} to Admin?`,
+        [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Promote',
+                style: 'destructive',
+                onPress: async () => {
+                    setIsLoading(true);
+                    try {
+
+                        // 3. Update the user's role in Firestore
+                        await firestore().collection('users').doc(userToPromote.uid).update({
+                            role: 'admin',
+                            // It's good practice to clear adminId if present, as they are now an Admin themselves
+                            adminId: null
+                        });
+
+                        // 4. Update local state
+
+                        // a. Remove the user from the regular 'users' list
+                        setUsers(prevUsers => prevUsers.filter(u => u.uid !== userToPromote.uid));
+
+                        // b. Add the user to the local 'admins' list
+                        setAdmins(prevAdmins => [
+                            ...prevAdmins,
+                            { ...userToPromote, role: 'admin', adminId: null }
+                        ]);
+
+                        // 5. Success Feedback and cleanup
+                        Alert.alert('Success', `${userToPromote.name} is now an administrator! 🎉`);
+                        handleDismiss(); // Close the admin options modal
+
+                    } catch (error) {
+                        // 6. Error Handling
+                        console.error("Error promoting user to admin:", error);
+                        Alert.alert('Error', 'Failed to update user role. Check Firebase permissions.');
+                    } finally {
+                        setIsLoading(false);
+                    }
+                },
+            },
+        ]
+    );
+};
+// ... (Your ActionButton component remains the same) ...
 const ActionButton = ({ icon, label, onPress, color = 'blue', disabled = false, screenWidth, theme }) => (
+    // ... (logic remains the same) ...
     <Pressable
         onPress={disabled ? null : onPress}
         disabled={disabled}
         style={({ pressed }) => [
             styles.actionButton,
             {
-                // Theme awareness
                 backgroundColor: pressed && !disabled ? color + '33' : theme.colors.card,
                 borderColor: disabled ? theme.colors.textSecondary + '66' : color,
-                // Adjust width to fit 3 buttons + margins within 16px padding on each side
-                width: (screenWidth / 3) - 32, // (screenWidth - 32 padding) / 3 
+                width: (screenWidth / 3) - 32,
                 marginHorizontal: 8,
                 opacity: disabled ? 0.5 : (pressed ? 0.8 : 1)
             }
         ]}
     >
-        <Ionicons name={icon} size={12 * (screenWidth / 375)} color={disabled ? theme.colors.textSecondary + '99' : color} style={{ marginRight: 2 }} />
+        <Ionicons name={icon} size={12 * (screenWidth / 375)} color={disabled ? theme.colors.text + '99' : color} style={{ marginRight: 2 }} />
         <Text
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.7}
             style={[
                 styles.actionButtonText,
-                { color: disabled ? theme.colors.textSecondary + '99' : color, fontSize: 10 * (screenWidth / 375) }
+                { color: disabled ? theme.colors.text + '99' : color, fontSize: 10 * (screenWidth / 375) }
             ]}
         >
             {label}
@@ -69,7 +123,7 @@ const ActionButton = ({ icon, label, onPress, color = 'blue', disabled = false, 
     </Pressable>
 );
 
-// --- Admin Picker/Change Admin Modal Component (Corrected) ---
+// ... (Your AdminPickerModal component remains the same) ...
 const AdminPickerModal = ({
     isVisible,
     onDismiss,
@@ -80,6 +134,7 @@ const AdminPickerModal = ({
     setIsLoading,
     currentAdminId
 }) => {
+    // ... (logic remains the same) ...
     const handleAdminSelection = async (newAdmin) => {
         if (newAdmin.uid === currentAdminId) {
             Alert.alert("No Change", `${newAdmin.name} is already the assigned admin.`);
@@ -89,14 +144,22 @@ const AdminPickerModal = ({
 
         setIsLoading(true);
         try {
-            await firestore().collection('users').doc(currentUser.uid).update({ adminId: newAdmin.uid });
+            // 1. Update the user's adminId field in Firestore
+            // The currentUser object in the modal props represents the user whose admin is being set.
+            await firestore().collection('users').doc(currentUser.uid).update({
+                adminId: newAdmin.uid
+            });
+
+            // 2. Update local React state (`users`)
             setUsers(prevUsers =>
                 prevUsers.map(u =>
+                    // Find the user and update their adminId locally
                     u.uid === currentUser.uid ? { ...u, adminId: newAdmin.uid } : u
                 )
             );
+
             Alert.alert('Success', `Admin for ${currentUser.name} successfully changed to ${newAdmin.name}.`);
-            onDismiss();
+            onDismiss(); // Close the modal
         } catch (error) {
             console.error("Error changing admin:", error);
             Alert.alert('Error', 'Failed to change admin. Please try again.');
@@ -106,12 +169,12 @@ const AdminPickerModal = ({
     };
 
     const renderAdminItem = ({ item }) => (
+        // ... (logic remains the same) ...
         <Pressable
             onPress={() => handleAdminSelection(item)}
             style={({ pressed }) => [
                 styles.adminListItem,
                 {
-                    // Theme awareness
                     backgroundColor: item.uid === currentAdminId ? theme.colors.primary + '22' : theme.colors.background,
                     opacity: pressed ? 0.7 : 1,
                     borderColor: theme.colors.border,
@@ -122,14 +185,14 @@ const AdminPickerModal = ({
                 <Ionicons
                     name={item.uid === currentAdminId ? "checkmark-circle-outline" : "person-circle-outline"}
                     size={24}
-                    color={item.uid === currentAdminId ? theme.colors.primary : theme.colors.textSecondary}
+                    color={item.uid === currentAdminId ? theme.colors.text : theme.colors.text}
                     style={{ marginRight: 10 }}
                 />
                 <View>
                     <Text style={[styles.adminName, { color: theme.colors.text }]}>
-                        {item.name || 'Admin Name'}
+                        {item.name || item.email || item.phone || 'Admin Name'}
                     </Text>
-                    <Text style={[styles.adminRole, { color: theme.colors.textSecondary }]}>
+                    <Text style={[styles.adminRole, { color: theme.colors.text }]}>
                         ({item.role})
                     </Text>
                 </View>
@@ -142,7 +205,6 @@ const AdminPickerModal = ({
             <Modal
                 visible={isVisible}
                 onDismiss={onDismiss}
-                // Theme awareness
                 contentContainerStyle={[styles.paperModalContainer, { backgroundColor: theme.colors.card, maxHeight: '80%' }]}
             >
                 <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
@@ -163,7 +225,7 @@ const AdminPickerModal = ({
                 )}
                 <Pressable
                     onPress={onDismiss}
-                    style={[styles.modalButton, styles.modalButtonCancel, { marginTop: 20 }]}
+                    style={[styles.modalButton, { marginTop: 20, }]}
                 >
                     <Text style={styles.modalButtonText}>Cancel</Text>
                 </Pressable>
@@ -174,8 +236,9 @@ const AdminPickerModal = ({
 // ------------------------------------------------------------------
 
 
-// --- User Card Component (Corrected) ---
+// ... (Your UserCardDisplay component remains the same) ...
 const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskModalData, openAdminOptionsModal, openChangeAdminModal, setSelectedUserForAdminAction, setIsLoading }) => {
+    // ... (logic remains the same) ...
     const scale = screenWidth / 375;
     const iconSize = 14 * scale;
 
@@ -185,7 +248,7 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
 
     const adminContactIcon = assignedAdmin?.email ? "mail-outline" : assignedAdmin?.phone ? "call-outline" : "alert-circle-outline";
     const adminContactText = assignedAdmin?.email || assignedAdmin?.phone || "No contact info";
-    const adminContactColor = assignedAdmin?.email || assignedAdmin?.phone ? theme.colors.primary : theme.colors.textSecondary; // Using theme primary
+    const adminContactColor = assignedAdmin?.email || assignedAdmin?.phone ? theme.colors.primary : theme.colors.text; // Using theme primary
 
     const handleAssignTask = () => {
         setTaskModalData({ isVisible: true, user: item });
@@ -228,8 +291,8 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
         );
     };
 
-    const adminActionLabel = isAssigned ? "Admin Options" : "Assign Admin";
-    const adminActionIcon = isAssigned ? "person-switch-outline" : "person-add-outline";
+    const adminActionLabel = isAssigned ? "Options" : "Assign";
+    const adminActionIcon = isAssigned ? "people-outline" : "person-add-outline";
     const userId = item.uid || item.id;
 
     return (
@@ -239,7 +302,7 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
                     styles.userCard,
                     {
                         backgroundColor: theme.colors.card,
-                        borderColor: theme.colors.border, // Using theme border color
+                        borderColor: theme.colors.border,
                         padding: 16 * scale,
                         borderRadius: 12 * scale,
                         borderBottomLeftRadius: 0,
@@ -260,7 +323,7 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
                     <Ionicons
                         name="mail-outline"
                         size={iconSize}
-                        color={theme.colors.textSecondary}
+                        color={theme.colors.text}
                         style={{ marginRight: 5 }}
                     />
                     <Text
@@ -269,7 +332,7 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
                             { color: theme.colors.text, fontSize: iconSize, opacity: 0.7 }
                         ]}
                     >
-                        {item.email || 'Email Not Found'}
+                        {item.email || item.phone || 'Email Not Found'}
                     </Text>
                 </View>
 
@@ -295,7 +358,7 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
                     icon="briefcase-outline"
                     label="ADD Task"
                     onPress={handleAssignTask}
-                    color="#f39c12" // Fixed color for task
+                    color="#f39c12"
                     screenWidth={screenWidth}
                     theme={theme}
                 />
@@ -304,7 +367,7 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
                     icon={adminActionIcon}
                     label={adminActionLabel}
                     onPress={() => handleAdminAction(item)}
-                    color="#2ecc71" // Fixed color for admin action
+                    color="#2ecc71"
                     screenWidth={screenWidth}
                     theme={theme}
                 />
@@ -313,7 +376,7 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
                     icon="trash-outline"
                     label="Delete"
                     onPress={() => handleDeleteUser(item)}
-                    color={theme.colors.notification} // Using theme notification color (Red)
+                    color={theme.colors.notification}
                     screenWidth={screenWidth}
                     theme={theme}
                 />
@@ -324,7 +387,6 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
 
 // --- Main Screen Component (UI wrapper) ---
 const ManageUsersScreenUI = () => {
-    // 🌟 CORRECTLY USE THEME CONTEXT 🌟
     const { theme } = useContext(ThemeContext);
     const screenWidth = useScreenWidth();
     const scale = screenWidth / 375;
@@ -349,7 +411,6 @@ const ManageUsersScreenUI = () => {
     const initialDeadline = new Date();
     initialDeadline.setDate(initialDeadline.getDate() + 1);
     const [taskDeadline, setTaskDeadline] = useState(initialDeadline);
-    // 🌟 State for react-native-date-picker 🌟
     const [datePickerVisible, setDatePickerVisible] = useState(false);
     // -------------------------
 
@@ -359,62 +420,76 @@ const ManageUsersScreenUI = () => {
     const [changeAdminModalVisible, setChangeAdminModalVisible] = useState(false);
     // -------------------------
 
-    useEffect(() => {
-        const user = auth().currentUser;
-        if (!user) {
-            Alert.alert("Authentication Error", "No authenticated user found.");
-            setIsLoading(false);
-            return;
-        }
-
-        setCurrentUserId(user.uid);
-
-        const fetchUsers = async () => {
-            try {
-                const usersSnapshot = await firestore().collection('users').get();
-                // ... (user filtering logic remains the same) ...
-                const allUsersData = usersSnapshot.docs.map(doc => ({
-                    uid: doc.id,
-                    ...doc.data(),
-                }));
-
-                const regularUsers = allUsersData.filter(u =>
-                    u.role && u.role.toLowerCase() === 'user'
-                );
-
-                const adminList = allUsersData.filter(u =>
-                    u.role && (u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'superadmin')
-                );
-
-                setUsers(regularUsers);
-                setAdmins(adminList);
-
-            } catch (error) {
-                console.error("Error fetching users from Firebase:", error);
-                Alert.alert("Error", "Failed to load user data. Check your Firebase connection and rules.");
-            } finally {
-                setIsLoading(false);
+    // ----------------------------------------------------------------------
+    // ## REFACTOR: Data Fetching into a stable, cached function
+    // ----------------------------------------------------------------------
+    const fetchUsersData = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const user = auth().currentUser;
+            if (!user) {
+                Alert.alert("Authentication Error", "No authenticated user found.");
+                setCurrentUserId(null);
+                return;
             }
-        };
 
-        fetchUsers();
-    }, []);
+            setCurrentUserId(user.uid);
 
-    // Filter based on search term
+            const usersSnapshot = await firestore().collection('users').get();
+
+            const allUsersData = usersSnapshot.docs.map(doc => ({
+                uid: doc.id,
+                ...doc.data(),
+            }));
+
+            const regularUsers = allUsersData.filter(u =>
+                u.role && u.role.toLowerCase() === 'user'
+            );
+
+            const adminList = allUsersData.filter(u =>
+                u.role && (u.role.toLowerCase() === 'admin' || u.role.toLowerCase() === 'superadmin')
+            );
+
+            setUsers(regularUsers);
+            setAdmins(adminList);
+
+        } catch (error) {
+            console.error("Error fetching users from Firebase:", error);
+            Alert.alert("Error", "Failed to load user data. Check your Firebase connection and rules.");
+        } finally {
+            setIsLoading(false);
+        }
+    }, []); // Empty dependency array means this function reference is stable
+
+    // ----------------------------------------------------------------------
+    // ## NEW: useFocusEffect for Re-fetching on Tab Change
+    // ----------------------------------------------------------------------
+    useFocusEffect(
+        useCallback(() => {
+            fetchUsersData();
+
+            // Return a cleanup function (optional)
+            return () => {
+                // E.g., cancel subscriptions or clear state if necessary
+            };
+        }, [fetchUsersData])
+    );
+    // ----------------------------------------------------------------------
+
+
+    // Filter based on search term (remains the same)
     const filteredUsers = users.filter(user =>
         (user.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         (user.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
-    // 🌟 react-native-date-picker handler 🌟
+    // ... (Your Modal Handlers remain the same: onConfirmDeadline, onCancelDeadline, showPicker, handleModalSubmit, handleModalDismiss) ...
     const onConfirmDeadline = (date) => {
         setDatePickerVisible(false);
         if (date > new Date()) {
             setTaskDeadline(date);
         } else {
-            // You can optionally alert the user if they pick a past time/date
             Alert.alert("Invalid Time", "The selected date/time must be in the future.");
-            // Keep the previous valid deadline or reset to a valid one
             setTaskDeadline(initialDeadline);
         }
     };
@@ -460,7 +535,6 @@ const ManageUsersScreenUI = () => {
             createdAt: now,
             updatedAt: now,
             status: "pending",
-            // ... other fields
         };
 
         try {
@@ -468,6 +542,8 @@ const ManageUsersScreenUI = () => {
 
             Alert.alert("Success", `Task assigned to ${taskModalData.user.name}! (Doc ID: ${docRef.id})`);
             handleModalDismiss();
+            // Optionally re-fetch data to update any task-related stats
+            await fetchUsersData();
 
         } catch (error) {
             console.error("Error saving task to Firebase:", error);
@@ -485,7 +561,7 @@ const ManageUsersScreenUI = () => {
         setDatePickerVisible(false); // Reset picker state
     };
 
-    // ... (Your Admin Modal Handlers remain here) ...
+
     const handleAdminOptionsDismiss = () => {
         setAdminOptionsModalVisible(false);
         setSelectedUserForAdminAction(null);
@@ -518,11 +594,8 @@ const ManageUsersScreenUI = () => {
                             setIsLoading(true);
                             try {
                                 await firestore().collection('users').doc(userItem.uid).update({ adminId: null });
-                                setUsers(prevUsers =>
-                                    prevUsers.map(u =>
-                                        u.uid === userItem.uid ? { ...u, adminId: null } : u
-                                    )
-                                );
+                                // Call fetchUsersData to update the list and associated admin/user data
+                                await fetchUsersData();
                                 Alert.alert('Success', `Admin successfully removed for ${userItem.name}.`);
                             } catch (error) {
                                 console.error("Error removing admin:", error);
@@ -557,7 +630,7 @@ const ManageUsersScreenUI = () => {
     return (
         <Portal.Host>
             <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top', 'bottom']}>
-                <Text style={[styles.pageTitle, { color: theme.colors.text, fontSize: 24 * scale , marginBottom:10 }]}>
+                <Text style={[styles.pageTitle, { color: theme.colors.text, fontSize: 24 * scale, marginBottom: 10 }]}>
                     Manage Users
                 </Text>
 
@@ -565,7 +638,6 @@ const ManageUsersScreenUI = () => {
                     placeholder="Search Users..."
                     onChangeText={setSearchTerm}
                     value={searchTerm}
-                    // Theme awareness
                     style={[styles.searchBarList, { backgroundColor: theme.colors.card, marginHorizontal: 16, marginBottom: 16 }]}
                     inputStyle={{ color: theme.colors.text }}
                     iconColor={theme.colors.textSecondary}
@@ -576,7 +648,7 @@ const ManageUsersScreenUI = () => {
                     renderItem={({ item }) => (
                         <UserCardDisplay
                             item={item}
-                            theme={theme} // Pass theme explicitly
+                            theme={theme}
                             screenWidth={screenWidth}
                             admins={admins}
                             setUsers={setUsers}
@@ -653,14 +725,13 @@ const ManageUsersScreenUI = () => {
                             minimumDate={new Date()}
                             onConfirm={onConfirmDeadline}
                             onCancel={onCancelDeadline}
-                            // Theme awareness properties for date-picker
                             theme={theme.dark ? 'dark' : 'light'}
                         />
 
 
                         <View style={styles.modalButtonRow}>
                             <Pressable
-                                style={[styles.modalButton, styles.modalButtonCancel, { backgroundColor: theme.colors.notification }]} // Using theme notification for cancel/destructive
+                                style={[styles.modalButton, styles.modalButtonCancel, { backgroundColor: theme.colors.notification }]}
                                 onPress={handleModalDismiss}
                                 disabled={isSubmitting}
                             >
@@ -701,32 +772,32 @@ const ManageUsersScreenUI = () => {
                             <Ionicons name="person-remove-outline" size={24} color={theme.colors.notification} />
                             <Text style={[styles.adminModalOptionText, { color: theme.colors.notification }]}>Remove Admin</Text>
                         </Pressable>
-                        <Pressable style={[styles.adminModalOptionButton, { borderTopWidth: 1, borderColor: theme.colors.border, marginTop: 10 }]} onPress={handleAdminOptionsDismiss}>
-                            <Text style={[styles.adminModalOptionText, { color: theme.colors.textSecondary }]}>Cancel</Text>
+                        <Pressable style={styles.adminModalOptionButton} onPress={()=>handleMakeAdmin(selectedUserForAdminAction,setUsers,setAdmins,setIsLoading,handleAdminOptionsDismiss)}>
+                            <Ionicons name="person-add-outline" size={24} color={theme.colors.notification} />
+                            <Text style={[styles.adminModalOptionText, { color: theme.colors.notification }]}>Make Admin</Text>
                         </Pressable>
                     </View>
                 </Modal>
             </Portal>
 
+            {/* 🌟 2. CHANGE/ASSIGN ADMIN MODAL 🌟 */}
+            <AdminPickerModal
+                isVisible={changeAdminModalVisible && !!selectedUserForAdminAction}
+                onDismiss={handleAdminPickerDismiss}
+                admins={admins.filter(a => a.uid !== selectedUserForAdminAction?.uid)} // Don't allow user to assign themselves as admin
+                currentUser={selectedUserForAdminAction}
+                theme={theme}
+                setUsers={setUsers}
+                setIsLoading={setIsLoading}
+                currentAdminId={selectedUserForAdminAction?.adminId}
+            />
 
-            {/* 🌟 2. CHANGE ADMIN MODAL (Admin Picker List) 🌟 */}
-            {selectedUserForAdminAction && (
-                <AdminPickerModal
-                    isVisible={changeAdminModalVisible}
-                    onDismiss={handleAdminPickerDismiss}
-                    admins={admins}
-                    currentUser={selectedUserForAdminAction}
-                    theme={theme}
-                    setUsers={setUsers}
-                    setIsLoading={setIsLoading}
-                    currentAdminId={selectedUserForAdminAction.adminId}
-                />
-            )}
         </Portal.Host>
     );
 };
 
-// --- Stylesheet (Complete and Corrected) --- 
+
+// ... (Your Stylesheet remains the same) ...
 const styles = StyleSheet.create({
     loadingContainer: {
         flex: 1,
@@ -736,24 +807,19 @@ const styles = StyleSheet.create({
     pageTitle: {
         fontWeight: 'bold',
         paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#ccc3',
+        paddingTop: 10,
     },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 50,
+    searchBarList: {
+        borderRadius: 10,
+        elevation: 1,
     },
     userCard: {
         borderWidth: 1,
-        borderLeftWidth: 5,
-        shadowColor: "#000",
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 3.84,
-        elevation: 5,
+        shadowRadius: 4,
+        elevation: 3,
     },
     cardHeader: {
         flexDirection: 'row',
@@ -762,20 +828,19 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     userName: {
-        fontWeight: '700',
-        flex: 1,
+        fontWeight: '900',
+        flexShrink: 1,
+        marginRight: 10,
     },
     roleBadge: {
+        borderRadius: 15,
         paddingHorizontal: 8,
         paddingVertical: 3,
-        borderRadius: 15,
-        minWidth: 70,
-        alignItems: 'center',
     },
     roleText: {
         color: 'white',
-        fontWeight: 'bold',
         fontSize: 10,
+        fontWeight: 'bold',
         textTransform: 'uppercase',
     },
     emailRow: {
@@ -784,91 +849,97 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     userContactText: {
-        fontStyle: 'italic',
-        maxWidth: '90%',
+        flexShrink: 1,
     },
     infoRow: {
-        flexDirection: 'column',
-        justifyContent: 'flex-start',
-        flexWrap: 'wrap',
-        paddingVertical: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingTop: 10,
+        marginTop: 10,
         borderTopWidth: 1,
     },
     infoPill: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 8,
-        paddingVertical: 4,
+        paddingVertical: 5,
         borderRadius: 20,
-        marginRight: 10,
+        flex: 1,
+        marginHorizontal: 4,
+        justifyContent: 'flex-start',
     },
     infoText: {
-        marginLeft: 4,
-        fontWeight: '400',
+        marginLeft: 5,
+        fontWeight: '600',
+        flexShrink: 1,
     },
     actionRow: {
         flexDirection: 'row',
-        // Use space-between for slightly more even distribution when buttons have margin
-        justifyContent: 'space-between',
-        borderTopWidth: 1,
-        paddingVertical: 12,
-        paddingHorizontal: 8, // Adjusting padding to account for button margins
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        paddingVertical: 8,
         borderBottomLeftRadius: 12,
         borderBottomRightRadius: 12,
-        overflow: 'hidden',
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: '#ccc',
+        marginTop: -1,
     },
     actionButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 8,
-        paddingHorizontal: 3,
-        borderRadius: 8,
+        borderRadius: 20,
         borderWidth: 1,
-        marginHorizontal: 0, // Margin is handled in the component's style prop for dynamic calculation
+        // width calculated in the component
     },
     actionButtonText: {
-        fontWeight: '600',
+        fontWeight: '700',
         textTransform: 'uppercase',
-        textAlign: 'center',
-        marginLeft: 2,
     },
-    searchBarList: {
-        borderRadius: 10,
-        elevation: 1,
+    emptyContainer: {
+        marginTop: 50,
+        alignItems: 'center',
+        padding: 20,
     },
     paperModalContainer: {
-        width: '90%',
-        alignSelf: 'center',
         padding: 20,
+        marginHorizontal: 20,
         borderRadius: 10,
+        alignSelf: 'center',
+        width: '90%',
+        maxWidth: 500,
     },
     modalTitle: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: 'bold',
-        marginBottom: 20,
+        marginBottom: 15,
         textAlign: 'center',
     },
     modalInput: {
+        height: 50,
         borderWidth: 1,
         borderRadius: 8,
-        padding: 12,
+        paddingHorizontal: 15,
         marginBottom: 15,
         fontSize: 16,
     },
     modalInputMultiline: {
-        minHeight: 100,
-        textAlignVertical: 'top',
+        height: 100,
+        paddingTop: 15,
     },
     modalLabel: {
-        fontSize: 14,
+        fontSize: 12,
         marginBottom: 5,
     },
     datePickerButton: {
+        padding: 15,
         borderWidth: 1,
         borderRadius: 8,
-        padding: 12,
         marginBottom: 20,
+        alignItems: 'center',
     },
     datePickerText: {
         fontSize: 16,
@@ -880,52 +951,50 @@ const styles = StyleSheet.create({
     },
     modalButton: {
         flex: 1,
-        borderRadius: 8,
         padding: 12,
+        borderRadius: 8,
         alignItems: 'center',
-        marginHorizontal: 5,
+    },
+    modalButtonCancel: {
+        marginRight: 10,
+        backgroundColor: '#7f8c8d', // Default fallback
+    },
+    modalButtonSubmit: {
+        marginLeft: 10,
     },
     modalButtonText: {
+        color: '#fff',
         fontWeight: 'bold',
-        color: 'white',
+        fontSize: 16,
     },
     adminModalOption: {
-        width: '100%',
-        alignItems: 'center',
+        paddingVertical: 10,
     },
     adminModalOptionButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        paddingVertical: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        padding: 15,
+        borderTopWidth: 1,
+        borderTopColor: '#eee',
     },
     adminModalOptionText: {
-        marginLeft: 10,
+        marginLeft: 15,
         fontSize: 16,
         fontWeight: '600',
     },
     adminListItem: {
-        padding: 15,
-        borderWidth: 1,
-        borderRadius: 8,
-        marginVertical: 4,
-    },
-    adminName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    adminRole: {
-        fontSize: 12,
-        fontStyle: 'italic',
+        padding: 12,
+        borderBottomWidth: 1,
     },
     adminEmptyText: {
         textAlign: 'center',
-        padding: 20,
-        fontSize: 16,
-    },
+        paddingVertical: 20,
+    }
 });
 
 export default ManageUsersScreenUI;
+
+
+
+
+

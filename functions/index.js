@@ -39,7 +39,6 @@ exports.notifyUserOnTask = onDocumentCreated("tasks/{taskId}", async (event) => 
       return;
     }
 
-    // Build the notification payload
     const payload = {
       notification: {
         title: "New Task Assigned",
@@ -50,7 +49,6 @@ exports.notifyUserOnTask = onDocumentCreated("tasks/{taskId}", async (event) => 
       },
     };
 
-    // Send the notification
     const response = await getMessaging().sendToDevice(tokens, payload);
     console.log("Notification sent:", response);
   } catch (error) {

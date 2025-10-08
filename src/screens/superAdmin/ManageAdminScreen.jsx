@@ -22,6 +22,8 @@ import {
     TextInput,
 } from 'react-native-paper';
 import DatePicker from 'react-native-date-picker';
+// 💡 REQUIRED IMPORT FOR RE-FETCHING ON FOCUS
+import { useFocusEffect } from '@react-navigation/native';
 
 import { ThemeContext } from '../../context/ThemeContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -135,16 +137,16 @@ const AssignUserModal = ({
                     <Ionicons
                         name={isSelected ? 'checkbox' : 'square-outline'}
                         size={24}
-                        color={isSelected ? theme.colors.primary : theme.colors.textSecondary}
+                        color={isSelected ? theme.colors.primary : theme.colors.text}
                         style={{ alignSelf: 'center' }}
                     />
                 )}
                 right={() => (
                     <PaperText
                         variant="bodySmall"
-                        style={{ color: theme.colors.textSecondary, alignSelf: 'center' }}
+                        style={{ color: theme.colors.text, alignSelf: 'center' }}
                     >
-                        {item.role}
+                        {item.role.toUpperCase()}
                     </PaperText>
                 )}
                 onPress={() => toggleSelection(item.id)}
@@ -182,12 +184,12 @@ const AssignUserModal = ({
                     </PaperText>
 
                     <Searchbar
-                        placeholder="Search by Name, Email, or Phone"
+                        placeholder="Search users"
                         onChangeText={setSearchTerm}
                         value={searchTerm}
                         style={[styles.searchBar, { backgroundColor: theme.colors.background }]}
                         inputStyle={{ color: theme.colors.text }}
-                        iconColor={theme.colors.textSecondary}
+                        iconColor={theme.colors.text}
                     />
 
                     {loadingUsers ? (
@@ -200,7 +202,7 @@ const AssignUserModal = ({
                             contentContainerStyle={{ paddingBottom: 10 }}
                             ListEmptyComponent={() => (
                                 <View style={styles.emptyContainer}>
-                                    <PaperText style={{ color: theme.colors.textSecondary }}>
+                                    <PaperText style={{ color: theme.colors.text, textAlign:'center', fontSize:16,}}>
                                         No unassigned users found or available for assignment.
                                     </PaperText>
                                 </View>
@@ -212,8 +214,9 @@ const AssignUserModal = ({
                         <Button
                             mode="outlined"
                             onPress={() => setIsModalVisible(false)}
-                            style={styles.actionButtonSpace}
-                            textColor={theme.colors.textSecondary}
+                            style={[styles.actionButtonSpace,{borderColor:theme.colors.border,borderRadius:6}]}
+                            textColor={theme.colors.text}
+                            buttonColor={theme.colors.info}
                             disabled={isAssigning}
                         >
                             Cancel
@@ -221,8 +224,9 @@ const AssignUserModal = ({
                         <Button
                             mode="contained"
                             onPress={handleAssignment}
-                            style={styles.actionButtonSpace}
+                            style={[styles.actionButtonSpace, { borderColor: theme.colors.border, borderRadius: 6 }]}
                             buttonColor={theme.colors.primary}
+                            textColor={theme.colors.text}
                             loading={isAssigning}
                             disabled={selectedUserIds.size === 0 || isAssigning}
                         >
@@ -288,17 +292,17 @@ const RoleModal = ({
                 contentContainerStyle={containerStyle}
             >
                 <PaperText
-                    variant="titleLarge"
+                    variant="headlineMedium"
                     style={{ color: theme.colors.text, marginBottom: 5 }}
                 >
-                    Change Role for {selectedAdmin.name}
+                    Change Role for : {selectedAdmin.name}
                 </PaperText>
 
                 <PaperText
                     variant="bodySmall"
                     style={{ color: theme.colors.textSecondary, marginBottom: 20 }}
                 >
-                    Current Role:
+                   
                     <PaperText
                         variant="bodySmall"
                         style={{ fontWeight: 'bold' }}
@@ -323,7 +327,7 @@ const RoleModal = ({
                                 mode={isCurrent ? "contained" : "outlined"}
                                 buttonColor={isCurrent ? theme.colors.primary : 'transparent'}
                                 textColor={isCurrent ? theme.colors.card : theme.colors.text}
-                                style={[styles.roleOptionButton, { borderColor: theme.colors.textSecondary }]}
+                                style={[styles.roleOptionButton, {  borderRadius:5 }]}
                                 labelStyle={{ fontWeight: '700' }}
                                 onPress={() => handleRoleSelect(role)}
                                 disabled={isUpdating}
@@ -335,10 +339,10 @@ const RoleModal = ({
                 </View>
 
                 <Button
-                    mode="text"
+                    mode="elevated"
                     onPress={() => setIsModalVisible(false)}
-                    style={{ marginTop: 20 }}
-                    textColor={theme.colors.textSecondary}
+                    style={{ marginTop: 20 ,borderColor:theme.colors.border,borderRadius:5}}
+                    textColor={theme.colors.text}
                     disabled={isUpdating}
                 >
                     Close
@@ -456,7 +460,7 @@ const AddTaskModal = ({
                     mode="outlined"
                     onPress={() => setOpenDatePicker(true)}
                     icon="calendar"
-                    style={{ marginBottom: 20, borderColor: theme.colors.border }}
+                    style={{ marginBottom: 20,borderRadius:5 }}
                     textColor={theme.colors.text}
                 >
                     {deadlineText}
@@ -483,8 +487,8 @@ const AddTaskModal = ({
                     <Button
                         mode="outlined"
                         onPress={() => setIsModalVisible(false)}
-                        style={styles.actionButtonSpace}
-                        textColor={theme.colors.textSecondary}
+                        style={[styles.actionButtonSpace,{borderRadius:5}]}
+                        textColor={theme.colors.text}
                         disabled={isSubmitting}
                     >
                         Cancel
@@ -492,8 +496,8 @@ const AddTaskModal = ({
                     <Button
                         mode="contained"
                         onPress={handleSubmit}
-                        style={styles.actionButtonSpace}
-                        buttonColor={theme.colors.primary}
+                        style={[styles.actionButtonSpace,{borderRadius:5}]}
+                        buttonColor={theme.colors.text}
                         loading={isSubmitting}
                         disabled={isSubmitting || !title || !description}
                     >
@@ -526,12 +530,13 @@ const ManageAdminScreen = () => {
 
 
     const filteredAdmins = useMemo(() => {
-        const filtered = users.filter(item => item.role === 'admin' || item.role === 'superadmin');
+        const filtered = users.filter(item => item.role === 'admin');
         return filtered;
     }, [users]);
 
 
-    const fetchAdminsData = async () => {
+    // 💡 WRAP FETCH LOGIC IN useCallback
+    const fetchAdminsData = useCallback(async () => {
         try {
             const userSnapshot = await firestore().collection(USERS_COLLECTION).get();
             const usersMap = {};
@@ -584,7 +589,8 @@ const ManageAdminScreen = () => {
             console.error('[DEBUG: DATA RE-FETCH ERROR]', error);
             throw new Error("Failed to load data from the database.");
         }
-    };
+    }, []); // Empty dependency array ensures this function is stable
+
 
     const updateRoleInFirestore = async (userId, newRole) => {
         if (!userId || !newRole) return false;
@@ -602,6 +608,7 @@ const ManageAdminScreen = () => {
                 return newUsers;
             });
 
+            // Re-fetch data to update all stats and relationships
             await fetchAdminsData();
             success = true;
         } catch (error) {
@@ -623,6 +630,7 @@ const ManageAdminScreen = () => {
             await batch.commit();
             successCount = userIds.length;
 
+            // Re-fetch data to update all stats and relationships
             await fetchAdminsData();
         } catch (error) {
             console.error('[DEBUG: ASSIGNMENT ERROR]', error);
@@ -647,6 +655,7 @@ const ManageAdminScreen = () => {
 
             Alert.alert('Success', `Task "${taskData.title}" created and assigned to ${targetUserForTask.name}.`);
 
+            // Re-fetch data to update all stats and relationships
             await fetchAdminsData();
             success = true;
         } catch (error) {
@@ -657,19 +666,29 @@ const ManageAdminScreen = () => {
     };
 
 
-    useEffect(() => {
-        const loadData = async () => {
-            setLoading(true);
-            try {
-                await fetchAdminsData();
-            } catch (error) {
-                Alert.alert("Error", error.message || "Failed to load initial data.");
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadData();
-    }, []);
+    // 💡 USE useFocusEffect TO RE-FETCH DATA ON TAB SWITCH
+    useFocusEffect(
+        useCallback(() => {
+            const loadData = async () => {
+                setLoading(true);
+                try {
+                    await fetchAdminsData();
+                } catch (error) {
+                    Alert.alert("Error", error.message || "Failed to load initial data.");
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            loadData();
+
+            // Cleanup function (optional for firestore.get())
+            return () => {
+                // Perform any cleanup if needed when the screen loses focus
+            };
+        }, [fetchAdminsData]) // fetchAdminsData is stable due to useCallback
+    );
+
 
     useEffect(() => {
         if (!isRoleModalVisible) {
@@ -795,7 +814,7 @@ const ManageAdminScreen = () => {
                         <Ionicons
                             name={contactIcon}
                             size={iconSize}
-                            color={theme.colors.textSecondary}
+                            color={theme.colors.text}
                             style={{ marginRight: 5, marginTop: verticalAdjustment }}
                         />
                         <Text
@@ -894,12 +913,14 @@ const ManageAdminScreen = () => {
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <Ionicons name="people-outline" size={50 * scale} color={theme.colors.textSecondary} />
-                        <Text style={[styles.emptyText, { color: theme.colors.text, fontSize: 16 * scale }]}>
-                            No administrators found.
+                        <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                            No active Admins found.
                         </Text>
                     </View>
                 }
             />
+
+            {/* Modals */}
             <RoleModal
                 isModalVisible={isRoleModalVisible}
                 setIsModalVisible={setIsRoleModalVisible}
@@ -908,7 +929,6 @@ const ManageAdminScreen = () => {
                 theme={theme}
                 styles={styles}
             />
-
             <AssignUserModal
                 isModalVisible={isAssignModalVisible}
                 setIsModalVisible={setIsAssignModalVisible}
@@ -917,7 +937,6 @@ const ManageAdminScreen = () => {
                 theme={theme}
                 styles={styles}
             />
-
             <AddTaskModal
                 isModalVisible={isTaskModalVisible}
                 setIsModalVisible={setIsTaskModalVisible}
@@ -931,139 +950,141 @@ const ManageAdminScreen = () => {
     );
 };
 
-
 const styles = StyleSheet.create({
-    pageTitle: {
-        fontWeight: '800',
-        paddingHorizontal: 16,
-        paddingVertical: 10
-    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
+    pageTitle: {
+        fontWeight: 'bold',
+        paddingHorizontal: 16,
+        paddingTop: 10,
+        paddingBottom: 5,
+    },
     adminCard: {
-        borderLeftWidth: 5,
-        zIndex: 1,
-        elevation: 6,
+        borderWidth: 1,
         shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
+        shadowRadius: 4,
+        elevation: 3,
     },
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 8,
     },
     adminName: {
-        fontWeight: '700',
+        fontWeight: '900',
+        flexShrink: 1,
+        marginRight: 10,
+    },
+    roleBadge: {
+        borderRadius: 15,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+    },
+    roleText: {
+        color: 'white',
+        fontSize: 10,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
     },
     emailRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 10,
     },
-    roleBadge: {
-        borderRadius: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-    },
-    roleText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '700',
-        textTransform: 'capitalize'
+    adminEmailText: {
+        flexShrink: 1,
     },
     infoRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 8,
+        paddingTop: 10,
+        marginTop: 10,
         borderTopWidth: 1,
-        paddingTop: 8
     },
     infoPill: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderRadius: 20,
+        paddingHorizontal: 8,
         paddingVertical: 5,
-        paddingHorizontal: 10,
-        borderWidth: 1,
-        borderColor: 'transparent',
+        borderRadius: 20,
+        flex: 1,
+        marginHorizontal: 4,
+        justifyContent: 'center',
     },
     infoText: {
-        marginLeft: 4,
-        fontWeight: '500',
+        marginLeft: 5,
+        fontWeight: '600',
     },
     actionRow: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 10,
+        justifyContent: 'space-between',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
         borderBottomLeftRadius: 12,
         borderBottomRightRadius: 12,
-        elevation: 6,
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
-        zIndex: 0,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: '#ccc', // Use a default light border or theme.colors.border
+        marginTop: -1, // Overlap the border
     },
     actionButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 8,
-        borderRadius: 8,
+        borderRadius: 20,
         borderWidth: 1,
+        marginHorizontal: 2,
     },
     actionButtonText: {
-        fontWeight: '600',
+        fontWeight: '700',
         textTransform: 'uppercase',
     },
     emptyContainer: {
-        flex: 1,
+        marginTop: 50,
         alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 50
+        padding: 20,
     },
-    roleOptionsContainer: {
-        width: '100%',
-        alignItems: 'center',
+    emptyText: {
+        marginTop: 10,
+        fontSize: 16,
+        textAlign: 'center',
     },
-    roleOptionButton: {
-        width: '100%',
-        marginVertical: 6,
-        borderRadius: 8,
-        padding: 4,
-    },
-
     modalContent: {
         flex: 1,
-        padding: 15,
+        padding: 25,
     },
     modalHeader: {
+        marginBottom: 20,
         fontWeight: 'bold',
-        marginBottom: 15,
         textAlign: 'center',
     },
     searchBar: {
-        marginBottom: 10,
+        marginBottom: 15,
         borderRadius: 10,
     },
     modalActions: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingTop: 10,
-        borderTopWidth: 1,
-        borderTopColor: '#ccc',
+        marginTop: 20,
     },
     actionButtonSpace: {
         flex: 1,
         marginHorizontal: 5,
+    },
+    roleOptionsContainer: {
+        marginTop: 10,
+    },
+    roleOptionButton: {
+        marginVertical: 5,
+        borderWidth: 1.5,
     }
 });
 
