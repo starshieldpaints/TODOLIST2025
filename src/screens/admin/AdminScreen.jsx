@@ -29,7 +29,6 @@ const AdminTabs = () => {
       try {
         const currentUser = auth().currentUser;
         if (!currentUser) return;
-
         const userDocRef = firestore().collection('users').doc(currentUser.uid);
         const userDoc = await userDocRef.get();
         const preferences = userDoc.exists ? userDoc.data().notificationPreferences || {} : {};

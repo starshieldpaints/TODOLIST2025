@@ -15,12 +15,20 @@ import SuperAdminScreen from "./src/screens/superAdmin/SuperAdminScreen";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, ThemeContext } from './src/context/ThemeContext';
 import { Provider as PaperProvider } from 'react-native-paper';
+import usePushNotifications from './src/hooks/usePushNotifications';
+import {createDefaultChannel} from "./src/utils/notificationChannel"
 
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  usePushNotifications();
+  useEffect(() => {
+    createDefaultChannel();
+  }, []);
+
   return (
+
     <SafeAreaProvider>
       <PaperProvider>
       <ThemeProvider>

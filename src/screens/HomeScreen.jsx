@@ -7,6 +7,8 @@ import LinearGradient from "react-native-linear-gradient";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import { checkSecurityStatus } from "../utils/developerMode"; // adjust path if needed
+
 
 export default function HomeScreen({ navigation }) {
     const scheme = useColorScheme();
@@ -20,10 +22,47 @@ export default function HomeScreen({ navigation }) {
         { icon: "security", text: "Secure & reliable" },
     ];
 
-    useEffect(() => {
+    // useEffect(() => {
 
        
-        const checkAuth = async () => {
+    //     const checkAuth = async () => {
+    //         const user = auth().currentUser;
+
+    //         if (!user) {
+    //             navigation.replace("login");
+    //             return;
+    //         }
+
+    //         try {
+    //             const doc = await firestore().collection("users").doc(user.uid).get();
+    //             const role = doc.data()?.role;
+                
+    //             if (role === "admin") navigation.replace("admin");
+    //             else if (role === "superadmin") navigation.replace("superAdmin");
+    //             else if (role === 'user') navigation.replace("user")
+    //             else navigation.replace("Home");
+    //         } catch (error) {
+    //             console.log("Error fetching user role:", error);
+    //             navigation.replace("Home");
+    //         }
+    //     };
+
+    //     checkAuth();
+
+       
+    // }, [navigation]);
+
+
+    useEffect(() => {
+        const runSecurityAndAuthChecks = async () => {
+            // 🔒 First: check for Developer Mode or USB Debugging
+            const insecure = await checkSecurityStatus();
+            if (insecure) {
+                // If found, show alert & stop further execution
+                return;
+            }
+
+            // 🔐 Then: continue to authentication & role logic
             const user = auth().currentUser;
 
             if (!user) {
@@ -34,10 +73,10 @@ export default function HomeScreen({ navigation }) {
             try {
                 const doc = await firestore().collection("users").doc(user.uid).get();
                 const role = doc.data()?.role;
-                
+
                 if (role === "admin") navigation.replace("admin");
                 else if (role === "superadmin") navigation.replace("superAdmin");
-                else if (role === 'user') navigation.replace("user")
+                else if (role === "user") navigation.replace("user");
                 else navigation.replace("Home");
             } catch (error) {
                 console.log("Error fetching user role:", error);
@@ -45,9 +84,7 @@ export default function HomeScreen({ navigation }) {
             }
         };
 
-        checkAuth();
-
-       
+        runSecurityAndAuthChecks();
     }, [navigation]);
 
 
