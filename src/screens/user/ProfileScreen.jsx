@@ -98,7 +98,7 @@ export default function ProfileScreen({ navigation }) {
         return () => unsubscribe();
     }, [user]);
 
-    // Function to upload the image to Firebase Storage and update Firestore
+
     const uploadImage = async (uri) => {
         if (!user || !uri) return;
 
@@ -197,7 +197,7 @@ export default function ProfileScreen({ navigation }) {
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top', 'bottom']}>
             <LinearGradient
                 colors={theme.dark ? ["#121212", "#1F1F1F"] : ["#FFFFFF", "#F4F4F4"]}
-                style={{ flex: 1 }}
+                style={{ flex: 1 , marginBottom:18}}
             >
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}

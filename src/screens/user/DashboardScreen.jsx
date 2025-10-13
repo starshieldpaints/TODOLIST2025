@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
@@ -9,12 +8,19 @@ import {
   Dimensions,
   TextInput,
   Modal,
+  Alert,
+  ActivityIndicator,
+  Image,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
+import storage from '@react-native-firebase/storage';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { ThemeContext } from '../../context/ThemeContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import DatePicker from 'react-native-date-picker'; // ⭐️ Import DatePicker
 
 // Hook to get screen width and calculate scaling factor
 const useScreenWidth = () => {
@@ -27,39 +33,31 @@ const useScreenWidth = () => {
   return screenWidth;
 };
 
-// --- HELPER FUNCTION: Get the latest remark from the array ---
+// --- CONSTANTS ---
+const WORK_LOCATIONS = [
+  { label: 'Home', value: 'wfh', icon: 'home-outline' },
+  { label: 'Office', value: 'office', icon: 'business-outline' },
+  { label: 'Field', value: 'field', icon: 'navigate-outline' },
+];
+
+const MAX_PHOTOS = 10; // Define a max photo limit
+
 const getLatestRemark = (remarks) => {
   if (!remarks || remarks.length === 0) return null;
-
-  // Filter out any malformed remark entries that might be missing 'createdAt'
   const validRemarks = remarks.filter(r => r && r.createdAt);
-
   if (validRemarks.length === 0) return null;
 
-  // Sort by createdAt timestamp (newest first)
   const sortedRemarks = validRemarks.sort((a, b) => {
-    // 🛑 FIX: Safely determine the timestamp value for comparison
-    const timeA = a.createdAt
-      ? (a.createdAt.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt).getTime())
-      : 0;
-    const timeB = b.createdAt
-      ? (b.createdAt.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt).getTime())
-      : 0;
-
-    return timeB - timeA; // Descending order (newest first)
+    const timeA = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt).getTime()) : 0;
+    const timeB = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt).getTime()) : 0;
+    return timeB - timeA;
   });
-
-  // Return the text of the latest remark
   return sortedRemarks[0].text;
 };
 
-// Helper for deadline formatting
 const formatDate = (deadline) => {
-  // 🛑 FIX: Safely check if deadline is missing
   if (!deadline) return 'No Deadline Set';
-
   try {
-    // Ensure we handle Firestore Timestamp objects correctly
     const date = deadline.toDate ? deadline.toDate() : new Date(deadline);
     const dateOptions = { month: 'short', day: 'numeric' };
     return date.toLocaleDateString(undefined, dateOptions);
@@ -68,6 +66,21 @@ const formatDate = (deadline) => {
   }
 };
 
+// ⭐️ NEW: Reminder formatting function
+const formatReminderTime = (reminder) => {
+  if (!reminder) return 'Set Reminder';
+  try {
+    const date = reminder.toDate ? reminder.toDate() : new Date(reminder);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch (e) {
+    return 'Set Reminder';
+  }
+};
 
 // --- MAIN COMPONENT ---
 const DashboardScreen = () => {
@@ -80,23 +93,32 @@ const DashboardScreen = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [updateRemark, setUpdateRemark] = useState('');
   const [updateStatus, setUpdateStatus] = useState('');
+  const [updateWorkLocation, setUpdateWorkLocation] = useState('wfh');
+  const [fieldImageUris, setFieldImageUris] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const currentUserId = auth().currentUser?.uid;
 
+  // ⭐️ NEW Reminder States ⭐️
+  const [reminderDate, setReminderDate] = useState(null); // The selected Date object for the task
+  const [showReminderPicker, setShowReminderPicker] = useState(false);
+
+
   useEffect(() => {
     if (!currentUserId) return;
-    const unsubscribe = firestore()
+
+    // Task Listener 
+    const taskUnsubscribe = firestore()
       .collection('tasks')
       .where('assignedTo', '==', currentUserId)
       .onSnapshot(snapshot => {
-        // Filter out tasks with 'pending' status from the main dashboard list
         const data = snapshot.docs.map(doc => ({ taskId: doc.id, ...doc.data() })).filter(t => t.status !== 'pending');
         setTasks(data);
       });
-    return () => unsubscribe();
+
+    return () => taskUnsubscribe();
   }, [currentUserId]);
 
-  // Count tasks by status (filtered)
   const totalTasks = tasks.length;
   const inProgressTasks = tasks.filter(t => t.status === 'inprogress').length;
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
@@ -104,80 +126,224 @@ const DashboardScreen = () => {
 
   const handleOpenUpdate = (task) => {
     setSelectedTask(task);
-    // Pre-fill the remark with the LATEST remark, or empty string
     setUpdateRemark(getLatestRemark(task.remarks) || '');
     setUpdateStatus(task.status);
+    setUpdateWorkLocation(task.workLocation || 'wfh');
+
+    // Load existing reminder 
+    const existingReminder = task.reminder?.toDate ? task.reminder.toDate() : null;
+    setReminderDate(existingReminder);
+
+    // Load existing image URLs for display
+    const initialUris = task.workLocation === 'field' && task.fieldProof && Array.isArray(task.fieldProof)
+      ? task.fieldProof.map(proof => proof.url)
+      : [];
+
+    setFieldImageUris(initialUris);
+
     setUpdateModalVisible(true);
   };
 
-  const handleSubmitUpdate = async () => {
-    if (!selectedTask) return;
 
-    // Only update if status changed OR a new remark was added
-    if (updateRemark.trim() === '' && updateStatus === selectedTask.status) {
-      setUpdateModalVisible(false);
+  // --- Image Picker Functions ---
+  const selectPhoto = () => {
+    // ... (Image picker functions remain unchanged) ...
+    if (fieldImageUris.length >= MAX_PHOTOS) {
+      Alert.alert("Limit Reached", `You can upload a maximum of ${MAX_PHOTOS} photos.`);
       return;
     }
 
-    // 1. Create the new remark object (if present)
-    const newRemarkEntry = {
-      text: updateRemark,
-      // FIX for NativeFirebaseError: Use client Date object, which is valid for arrayUnion()
-      createdAt: new Date(),
-      userId: currentUserId
+    const options = {
+      mediaType: 'photo',
+      quality: 0.7,
+      saveToPhotos: false,
     };
 
+    Alert.alert(
+      "Upload Field Photo",
+      "Choose a method to upload your field picture.",
+      [
+        { text: "Take Photo", onPress: () => launchCamera(options, handleImageResponse) },
+        { text: "Choose from Gallery", onPress: () => launchImageLibrary(options, handleImageResponse) },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
+  };
+
+  const handleImageResponse = (response) => {
+    if (response.didCancel) {
+      console.log('User cancelled image picker');
+    } else if (response.errorCode) {
+      console.error('ImagePicker Error: ', response.errorMessage);
+      Alert.alert("Error", `Failed to get image: ${response.errorMessage}`);
+    } else if (response.assets && response.assets.length > 0) {
+      const uri = response.assets[0].uri;
+      // Append the new URI to the existing array
+      setFieldImageUris(prevUris => {
+        const newUris = [...prevUris, uri];
+        // Ensure we don't exceed the limit
+        return newUris.slice(0, MAX_PHOTOS);
+      });
+    }
+  };
+
+  // Function to remove an image from the local selection array
+  const removeImage = (uriToRemove) => {
+    Alert.alert(
+      "Remove Photo",
+      "Are you sure you want to remove this photo?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove", style: "destructive", onPress: () => {
+            setFieldImageUris(prevUris => prevUris.filter(uri => uri !== uriToRemove));
+          }
+        },
+      ]
+    );
+  };
+
+  // --- Image Upload to Firebase Storage ---
+  const uploadImages = async (uris, taskId, userId) => {
+    // ... (Image upload function remains unchanged) ...
+    if (!uris || uris.length === 0) return [];
+
+    const uploadPromises = uris.map(async (uri, index) => {
+      // Only upload new local files (URIs that don't start with http/s)
+      if (uri.startsWith('http')) {
+        return null;
+      }
+
+      // Path: tasks/{taskId}/field_proof/{userId}_{timestamp}_{index}.jpg
+      const timestamp = new Date().getTime();
+      const filename = `tasks/${taskId}/field_proof/${userId}_${timestamp}_${index}.jpg`;
+      const storageRef = storage().ref(filename);
+
+      await storageRef.putFile(uri);
+      const downloadURL = await storageRef.getDownloadURL();
+
+      return {
+        url: downloadURL,
+        path: filename,
+        uploadedAt: new Date(),
+      };
+    });
+
+    // Wait for all uploads to complete and filter out nulls (for existing URLs)
+    const uploadedInfos = await Promise.all(uploadPromises);
+    return uploadedInfos.filter(info => info !== null);
+  };
+
+  // ⭐️ Submission Handler - MODIFIED ⭐️
+  const handleSubmitUpdate = async () => {
+    if (!selectedTask || !currentUserId || isUploading) return;
+
+    // 1. Separation and Validation remain the same...
+
+    const localNewUris = fieldImageUris.filter(uri => !uri.startsWith('http'));
+    const existingProofs = selectedTask.fieldProof && Array.isArray(selectedTask.fieldProof)
+      ? selectedTask.fieldProof.filter(proof => fieldImageUris.includes(proof.url))
+      : [];
+
+    if (updateWorkLocation === 'field' && fieldImageUris.length === 0) {
+      Alert.alert("Field Photo Required", "Please upload at least one photo to verify your location for 'Field' work status.");
+      return;
+    }
+
+    setIsUploading(true);
+    let uploadedProofs = [];
+
     try {
+      // 2. Image Upload
+      if (updateWorkLocation === 'field' && localNewUris.length > 0) {
+        uploadedProofs = await uploadImages(localNewUris, selectedTask.taskId, currentUserId);
+      }
+
+      const allFieldProofs = [...existingProofs, ...uploadedProofs];
+
+
+      // 3. Prepare Firestore Payload
       const updatePayload = {
         status: updateStatus,
-        // Keep serverTimestamp for the document's last update time
+        workLocation: updateWorkLocation,
         updatedAt: firestore.FieldValue.serverTimestamp(),
       };
 
-      // 2. Only add the remarks array update if a new remark text was provided
+      // ⭐️ ADD REMINDER TO PAYLOAD ⭐️
+      if (reminderDate) {
+        // Convert the local Date object to a Firestore Timestamp
+        updatePayload.reminder = firestore.Timestamp.fromDate(reminderDate);
+      } else if (selectedTask.reminder) {
+        // If the user cleared the reminder but the task previously had one
+        updatePayload.reminder = firestore.FieldValue.delete();
+      }
+
+      // Update/Clear fieldProof array
+      if (updateWorkLocation === 'field') {
+        updatePayload.fieldProof = allFieldProofs;
+      } else {
+        updatePayload.fieldProof = firestore.FieldValue.delete();
+      }
+
+      // Remarks
       if (updateRemark.trim() !== '') {
-        // Use arrayUnion to safely append the new remark object
+        const newRemarkEntry = {
+          text: updateRemark,
+          createdAt: new Date(),
+          userId: currentUserId
+        };
         updatePayload.remarks = firestore.FieldValue.arrayUnion(newRemarkEntry);
       }
 
+      // 4. Commit to Firestore
       await firestore().collection('tasks').doc(selectedTask.taskId).update(updatePayload);
+
+      Alert.alert("Success", `Task updated! ${allFieldProofs.length} proof photo(s) saved.`);
 
       // Reset states
       setUpdateModalVisible(false);
       setSelectedTask(null);
       setUpdateRemark('');
       setUpdateStatus('');
+      setUpdateWorkLocation('wfh');
+      setFieldImageUris([]);
+      setReminderDate(null); // ⭐️ Reset reminder state ⭐️
+
     } catch (err) {
       console.error("Error submitting update:", err);
+      Alert.alert("Error", err.message || "Failed to submit task update. Please try again.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
 
-  // Render task card with modern design
+  // Render task item (same as before)
   const renderTaskItem = ({ item }) => {
-    // 🛑 Pass the deadline value directly to the safe formatDate helper
+    // ... (renderTaskItem logic remains unchanged) ...
     const deadline = item.deadline ? (item.deadline.toDate ? item.deadline.toDate() : new Date(item.deadline)) : null;
     const isOverdue = item.status === 'inprogress' && deadline && deadline < new Date();
 
     const statusColors = {
-      inprogress: isOverdue ? '#e74c3c' : '#f1c40f', // Red if overdue, Yellow if active
+      inprogress: isOverdue ? '#e74c3c' : '#f1c40f',
       completed: '#2ecc71',
       rejected: '#808080',
     };
 
     const statusColor = statusColors[item.status] || '#555555';
-
-    // Display the latest remark text
     const latestRemark = getLatestRemark(item.remarks);
+    const taskLocation = (item.workLocation || 'wfh').toUpperCase();
+    const locationIcon = WORK_LOCATIONS.find(loc => loc.value === item.workLocation)?.icon || 'alert-circle-outline';
+
+    // ⭐️ Get Reminder time for display
+    const reminderTime = item.reminder;
+    const isReminderSet = !!reminderTime;
+
 
     return (
       <View style={[styles.modernCardWrapper, { marginVertical: 8 * scale }]}>
-        {/* Status Indicator Stripe */}
         <View style={[styles.statusStripe, { backgroundColor: statusColor }]} />
-
         <View style={[styles.modernTaskCard, { backgroundColor: theme.colors.card, padding: 16 * scale, borderRadius: 12 * scale }]}>
-
-          {/* Header: Title and Status Badge */}
           <View style={styles.modernTaskHeader}>
             <Text
               style={[styles.modernTaskTitle, { color: theme.colors.text, fontSize: 18 * scale }]}
@@ -186,14 +352,7 @@ const DashboardScreen = () => {
               {item.title}
             </Text>
             <View
-              style={[
-                styles.modernStatusBadge,
-                {
-                  backgroundColor: statusColor + '20',
-                  borderColor: statusColor,
-                  paddingHorizontal: 10 * scale,
-                }
-              ]}
+              style={[styles.modernStatusBadge, { backgroundColor: statusColor + '20', borderColor: statusColor, paddingHorizontal: 10 * scale, }]}
             >
               <Text style={[styles.modernStatusText, { color: statusColor, fontSize: 12 * scale }]}>
                 {isOverdue ? 'OVERDUE' : item.status.toUpperCase()}
@@ -201,7 +360,23 @@ const DashboardScreen = () => {
             </View>
           </View>
 
-          {/* Description */}
+          <View style={[styles.modernInfoRow, { marginTop: 8 * scale, marginBottom: 4 * scale }]}>
+            <Ionicons name={locationIcon} size={14 * scale} color={theme.colors.primary} style={{ marginRight: 4 * scale }} />
+            <Text style={[styles.modernInfoText, { color: theme.colors.primary, fontSize: 13 * scale, fontWeight: '700' }]}>
+              Location: {taskLocation}
+            </Text>
+          </View>
+
+     
+          {isReminderSet && (
+            <View style={[styles.modernInfoRow, { marginBottom: 4 * scale }]}>
+              <Ionicons name="notifications-outline" size={14 * scale} color={theme.colors.text} style={{ marginRight: 4 * scale }} />
+              <Text style={[styles.modernInfoText, { color: theme.colors.text, fontSize: 13 * scale, fontWeight: '500' }]}>
+                Reminder: {formatReminderTime(reminderTime)}
+              </Text>
+            </View>
+          )}
+
           <Text
             style={[styles.modernDescription, { color: theme.colors.text, fontSize: 14 * scale, marginTop: 4 * scale }]}
             numberOfLines={2}
@@ -209,13 +384,11 @@ const DashboardScreen = () => {
             {item.description || 'No description provided.'}
           </Text>
 
-          {/* Deadline & Remark Info Row */}
           <View style={[styles.modernInfoRow, { marginTop: 12 * scale }]}>
             <Ionicons name="calendar-outline" size={14 * scale} color={theme.colors.text} style={{ marginRight: 4 * scale }} />
             <Text style={[styles.modernInfoText, { color: theme.colors.text, fontSize: 13 * scale, fontWeight: isOverdue ? 'bold' : '500' }]}>
               Due: {formatDate(item.deadline)}
             </Text>
-            {/* Display the latestRemark from the array */}
             {latestRemark && (
               <Text style={[styles.modernInfoText, { color: statusColor, fontSize: 13 * scale, fontWeight: '600', marginLeft: 16 * scale }]}>
                 <Ionicons name="chatbox-outline" size={14 * scale} color={statusColor} style={{ marginRight: 4 * scale }} />
@@ -224,13 +397,22 @@ const DashboardScreen = () => {
             )}
           </View>
 
-          {/* Action Button */}
+          {/* Show Proof count if available */}
+          {item.workLocation === 'field' && item.fieldProof && Array.isArray(item.fieldProof) && item.fieldProof.length > 0 && (
+            <View style={[styles.modernInfoRow, { marginTop: 8 * scale }]}>
+              <Ionicons name="images-outline" size={14 * scale} color={theme.colors.text} style={{ marginRight: 4 * scale }} />
+              <Text style={[styles.modernInfoText, { color: theme.colors.text, fontSize: 13 * scale, fontWeight: '500' }]}>
+                {item.fieldProof.length} Proof Photo(s) Attached
+              </Text>
+            </View>
+          )}
+
           <Pressable
             style={[styles.modernActionButton, { backgroundColor: theme.colors.primary, marginTop: 16 * scale, borderTopColor: theme.colors.border }]}
             onPress={() => handleOpenUpdate(item)}
           >
             <Ionicons name="reorder-four-outline" size={20 * scale} color="#fff" />
-            <Text style={[styles.modernActionButtonText, { fontSize: 14 * scale }]}>Update</Text>
+            <Text style={[styles.modernActionButtonText, { fontSize: 14 * scale }]}>Update Task Details</Text>
           </Pressable>
         </View>
       </View>
@@ -248,7 +430,6 @@ const DashboardScreen = () => {
           <>
             {/* Summary Cards */}
             <View style={[styles.summaryContainer, { marginTop: 16 * scale }]}>
-              {/* Note: Colors are hardcoded for visibility but can be theme-linked */}
               <View style={[styles.summaryCard, { backgroundColor: '#3498db', padding: 12 * scale, borderRadius: 12 * scale }]}>
                 <Ionicons name="list-outline" size={24 * scale} color="#fff" />
                 <Text style={[styles.summaryText, { fontSize: 14 * scale }]}>Total: {totalTasks}</Text>
@@ -279,20 +460,126 @@ const DashboardScreen = () => {
         )}
       />
 
-      {/* Update Modal */}
-      <Modal visible={updateModalVisible} transparent animationType="slide" onRequestClose={() => setUpdateModalVisible(false)}>
+      {/* --- TASK Update Modal --- */}
+      <Modal visible={updateModalVisible} transparent animationType="slide" onRequestClose={() => setUpdateModalVisible(false)} >
         <View style={styles.modalBackground}>
           <View style={[styles.modalContainer, { backgroundColor: theme.colors.card, padding: 20 * scale, borderRadius: 12 * scale }]}>
-            <Text style={[styles.modalTitle, { color: theme.colors.text, fontSize: 18 * scale }]}>Update Task: {selectedTask?.title}</Text>
-            <TextInput
-              placeholder="Add/Update Remark..."
-              placeholderTextColor="#888"
-              style={[styles.input, { color: theme.colors.text, fontSize: 14 * scale, borderColor: theme.colors.border, padding: 12 * scale, borderRadius: 8 * scale }]}
-              value={updateRemark}
-              onChangeText={setUpdateRemark}
-              multiline
-            />
-            <Text style={{ color: theme.colors.text, marginTop: 12 * scale, fontSize: 14 * scale, fontWeight: '600' }}>Select New Status:</Text>
+            <Text style={[styles.modalTitle, { color: theme.colors.text, fontSize: 18 * scale, marginBottom: 12 * scale }]}>
+              Update Task: {selectedTask?.title}
+            </Text>
+
+            {/* ⭐️ REMINDER SECTION ⭐️ */}
+            <Text style={{ color: theme.colors.text, marginTop: 12 * scale, fontSize: 14 * scale, fontWeight: '600' }}>
+              Set Task Reminder:
+            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 * scale }}>
+              <Pressable
+                style={[
+                  styles.modalButton,
+                  {
+                    backgroundColor: reminderDate ? theme.colors.primary : theme.colors.border,
+                    flex: 3,
+                    marginRight: 8 * scale,
+                  }
+                ]}
+                onPress={() => setShowReminderPicker(true)}
+              >
+                <Text style={[styles.modalButtonText, { fontSize: 13 * scale }]}>
+                  {reminderDate ? formatReminderTime(reminderDate) : 'Tap to Set Date & Time'}
+                </Text>
+              </Pressable>
+              {reminderDate && (
+                <Pressable
+                  style={[styles.modalButton, { backgroundColor: '#e74c3c', flex: 1, }]}
+                  onPress={() => setReminderDate(null)} // Clear the reminder
+                >
+                  <Ionicons name="trash-outline" size={18 * scale} color="#fff" />
+                </Pressable>
+              )}
+            </View>
+            {/* END REMINDER SECTION */}
+
+
+            {/* Work Location Update */}
+            <Text style={{ color: theme.colors.text, marginTop: 12 * scale, fontSize: 14 * scale, fontWeight: '600' }}>
+              Working From:
+            </Text>
+            <View style={{ flexDirection: 'row', marginTop: 8 * scale, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+              {WORK_LOCATIONS.map(location => (
+                <Pressable
+                  key={location.value}
+                  onPress={() => { setUpdateWorkLocation(location.value); if (location.value !== 'field') setFieldImageUris([]); }}
+                  style={{
+                    backgroundColor: updateWorkLocation === location.value ? theme.colors.primary + '20' : theme.colors.card,
+                    borderColor: updateWorkLocation === location.value ? theme.colors.primary : theme.colors.border,
+                    borderWidth: 1.5,
+                    paddingVertical: 10 * scale,
+                    paddingHorizontal: 8 * scale,
+                    borderRadius: 8 * scale,
+                    width: '32%',
+                    alignItems: 'center',
+                    marginBottom: 8 * scale,
+                  }}
+                >
+                  <Ionicons
+                    name={location.icon}
+                    size={20 * scale}
+                    color={updateWorkLocation === location.value ? theme.colors.primary : theme.colors.text}
+                  />
+                  <Text style={{
+                    color: updateWorkLocation === location.value ? theme.colors.primary : theme.colors.text,
+                    fontSize: 10 * scale,
+                    fontWeight: '600',
+                    marginTop: 4 * scale
+                  }}>
+                    {location.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* FIELD PHOTO UPLOAD SECTION */}
+            {updateWorkLocation === 'field' && (
+              <View style={{ marginTop: 15 * scale, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8 * scale, padding: 10 * scale }}>
+                <Text style={{ color: theme.colors.text, fontSize: 14 * scale, fontWeight: '700', marginBottom: 8 * scale, color: theme.colors.primary }}>
+                  Field Work Proof ({fieldImageUris.length}/{MAX_PHOTOS} photos)
+                </Text>
+
+                <Pressable
+                  style={[styles.photoButton, { backgroundColor: theme.colors.primary, padding: 10 * scale, borderRadius: 8 * scale }]}
+                  onPress={selectPhoto}
+                  disabled={isUploading || fieldImageUris.length >= MAX_PHOTOS}
+                >
+                  <Ionicons name={"camera-outline"} size={20 * scale} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 14 * scale, fontWeight: '600', marginLeft: 10 * scale }}>
+                    {fieldImageUris.length >= MAX_PHOTOS ? `Max Photos (${MAX_PHOTOS}) Reached` : 'Add Photo (Camera/Gallery)'}
+                  </Text>
+                </Pressable>
+
+                {/* Image Gallery ScrollView */}
+                {fieldImageUris.length > 0 && (
+                  <ScrollView horizontal style={{ marginTop: 8 * scale, height: 80 * scale }} contentContainerStyle={{ alignItems: 'center' }}>
+                    {fieldImageUris.map((uri, index) => (
+                      <View key={index} style={{ marginRight: 10 * scale }}>
+                        <Image source={{ uri: uri }} style={{ width: 60 * scale, height: 60 * scale, borderRadius: 6 * scale }} />
+                        <Pressable
+                          style={styles.removeButton}
+                          onPress={() => removeImage(uri)}
+                        >
+                          <Ionicons name="close-circle" size={18 * scale} color="#e74c3c" />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            )}
+
+
+            {/* Task Status Update */}
+            <Text style={{ color: theme.colors.text, marginTop: 12 * scale, fontSize: 14 * scale, fontWeight: '600' }}>
+              Select New Status:
+            </Text>
             <View style={{ flexDirection: 'row', marginTop: 8 * scale, flexWrap: 'wrap' }}>
               {['inprogress', 'completed', 'rejected'].map(status => (
                 <Pressable
@@ -313,24 +600,67 @@ const DashboardScreen = () => {
                 </Pressable>
               ))}
             </View>
+
+
+            {/* Remark Update */}
+            <TextInput
+              placeholder="Add/Update Remark (optional)..."
+              placeholderTextColor="#888"
+              style={[styles.input, {
+                color: theme.colors.text,
+                fontSize: 14 * scale,
+                borderColor: theme.colors.border,
+                padding: 12 * scale,
+                borderRadius: 8 * scale,
+                marginTop: 12 * scale
+              }]}
+              value={updateRemark}
+              onChangeText={setUpdateRemark}
+              multiline
+              numberOfLines={3}
+            />
+
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 * scale }}>
-              <Pressable style={[styles.modalButton, { backgroundColor: '#bdc3c7', flex: 1, marginRight: 6 * scale }]} onPress={() => setUpdateModalVisible(false)}>
+              <Pressable style={[styles.modalButton, { backgroundColor: '#bdc3c7', flex: 1, marginRight: 6 * scale }]} onPress={() => setUpdateModalVisible(false)} disabled={isUploading}>
                 <Text style={[styles.modalButtonText, { fontSize: 14 * scale }]}>Cancel</Text>
               </Pressable>
-              <Pressable style={[styles.modalButton, { backgroundColor: '#3498db', flex: 1, marginLeft: 6 * scale }]} onPress={handleSubmitUpdate}>
-                <Text style={[styles.modalButtonText, { fontSize: 14 * scale }]}>Submit Update</Text>
+              <Pressable style={[styles.modalButton, { backgroundColor: theme.colors.primary, flex: 1, marginLeft: 6 * scale }]} onPress={handleSubmitUpdate} disabled={isUploading}>
+                {isUploading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={[styles.modalButtonText, { fontSize: 14 * scale }]}>Submit Update</Text>
+                )}
               </Pressable>
             </View>
           </View>
         </View>
       </Modal>
+
+      {/* ⭐️ DatePicker Component for Reminder ⭐️ */}
+      <DatePicker
+        modal
+        open={showReminderPicker}
+        date={reminderDate || new Date()} // Use existing date or current date
+        onConfirm={(date) => {
+          setShowReminderPicker(false);
+          setReminderDate(date); // Save the selected Date object
+        }}
+        onCancel={() => {
+          setShowReminderPicker(false);
+        }}
+        minimumDate={new Date()}
+        mode="datetime"
+        title={`Set Reminder for "${selectedTask?.title || 'Task'}"`}
+        textColor={theme.colors.text}
+      />
+
     </SafeAreaView>
   );
 };
 
-// --- STYLESHEET ---
+// --- STYLESHEET (Only one new style for reminder display in the modal) ---
 const styles = StyleSheet.create({
-  // Summary Styles (Adjusted for responsiveness)
+  // ... existing styles remain the same ...
   summaryContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -352,8 +682,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginLeft: 8,
   },
-
-  // NEW MODERN TASK CARD STYLES (Copied/Adjusted from UserTasksScreen)
   modernCardWrapper: {
     flexDirection: 'row',
     elevation: 6,
@@ -423,15 +751,25 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 
-  // Modal Styles
   modalBackground: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
   modalContainer: { width: '85%' },
   modalTitle: { fontWeight: 'bold', marginBottom: 12 },
   input: { borderWidth: 1 },
   modalButton: { paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
   modalButtonText: { color: '#fff', fontWeight: 'bold' },
+  photoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeButton: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+  },
 
-  // Empty State
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 50 },
   emptyText: { marginTop: 16, textAlign: 'center' },
 });

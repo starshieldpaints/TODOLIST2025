@@ -21,6 +21,8 @@ import messaging from '@react-native-firebase/messaging';
 import notifee from '@notifee/react-native';
 
 
+
+
 messaging().setBackgroundMessageHandler(async remoteMessage => {
     console.log('Background notification received:', remoteMessage);
     await notifee.displayNotification({

@@ -1,18 +1,25 @@
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Dimensions } from 'react-native';
-import { Portal, Modal, Card, Text, IconButton, TextInput, Menu } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { Portal, Modal, Card, Text, IconButton, TextInput, Menu, Button } from 'react-native-paper';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import firestore from '@react-native-firebase/firestore';
+import { useTheme } from "../hooks/useTheme";
 
-const { height } = Dimensions.get('window');
+const { height, width } = Dimensions.get('window');
 
-const PremiumTasksModal = ({ visible, onDismiss, selectedUser, theme }) => {
+const PremiumTasksModal = ({ visible, onDismiss, selectedUser }) => {
     const [remarkModalVisible, setRemarkModalVisible] = useState(false);
     const [remarkText, setRemarkText] = useState('');
     const [currentTaskId, setCurrentTaskId] = useState(null);
-
-    // Menu state for status updates
     const [menuVisible, setMenuVisible] = useState(null);
+
+
+    console.log("Selected User :",selectedUser)
+
+    // Use the theme context provided by the user
+    const theme = useTheme();
+
+    // --- Utility Functions ---
 
     const deleteTask = async (taskId) => {
         await firestore().collection('tasks').doc(taskId).delete();
@@ -50,13 +57,19 @@ const PremiumTasksModal = ({ visible, onDismiss, selectedUser, theme }) => {
         setMenuVisible(null);
     };
 
+    // HARDCODED STATUS COLORS (since the theme object cannot be extended)
     const statusColors = {
-        pending: '#FFB300',
-        'in-progress': '#2196F3',
-        completed: '#4CAF50',
+        pending: '#FFB300',      // Hardcoded Warning/Amber
+        'in-progress': '#2196F3',// Hardcoded Info/Blue
+        completed: '#4CAF50',    // Hardcoded Success/Green
+        error: '#FF3B30',        // Hardcoded Error/Red for overdue/delete
+        textSecondary: theme.dark ? '#9CA3AF' : '#6B7280', // Inferred secondary text color
+        backgroundVariant: theme.dark ? '#374151' : '#E5E7EB', // Inferred background variant
     };
 
     const statusOptions = ['pending', 'in-progress', 'completed'];
+
+    // --- Component JSX (Modernized UI with strict theme usage) ---
 
     return (
         <Portal>
@@ -65,153 +78,198 @@ const PremiumTasksModal = ({ visible, onDismiss, selectedUser, theme }) => {
                 onDismiss={onDismiss}
                 contentContainerStyle={[
                     styles.modalContent,
-                    { backgroundColor: theme.colors.card, maxHeight: height * 0.8 }
+                    // Use theme.colors.card for the modal background
+                    { backgroundColor: theme.colors.card, maxHeight: height * 0.9 }
                 ]}
             >
+                {/* Close Button at Top Right */}
+                <IconButton
+                    icon="close"
+                    // Using inferred secondary color for close button
+                    iconColor={statusColors.textSecondary}
+                    size={28}
+                    style={styles.closeButton}
+                    onPress={onDismiss}
+                />
+
                 {/* Header */}
                 <View style={styles.headerRow}>
-                    <Ionicons name="briefcase-outline" size={22} color={theme.colors.primary} style={{ marginRight: 8 }} />
+                    <Ionicons name="briefcase-outline" size={24} color={theme.colors.primary} style={{ marginRight: 8 }} />
                     <Text style={[styles.headerText, { color: theme.colors.text }]}>
                         {selectedUser?.name}'s Tasks
                     </Text>
                 </View>
 
-                <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Task List Scroll View */}
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingVertical: 10 }}
+                >
                     {selectedUser?.tasks?.length ? (
                         selectedUser.tasks.map((task) => {
                             const isOverdue = task.deadline?.toDate?.() < new Date() && task.status !== 'completed';
 
                             return (
-                                <Card
-                                    key={task.taskId}
-                                    style={[
-                                        styles.taskCard,
-                                        {
-                                            backgroundColor: theme.colors.background,
-                                            borderColor: isOverdue ? '#FF3B30' : 'transparent',
-                                            borderWidth: isOverdue ? 1 : 0,
-                                        }
-                                    ]}
-                                >
-                                    <Card.Content>
-                                        {/* Task Title */}
-                                        <View style={styles.taskHeader}>
-                                            <Ionicons name="list-circle-outline" size={22} color={theme.colors.primary} style={{ marginRight: 8 }} />
-                                            <Text style={[styles.taskTitle, { color: theme.colors.text }]}>{task.title}</Text>
-                                        </View>
+                                <View key={task.taskId} style={styles.taskContainer}>
+                                    <Card
+                                        style={[
+                                            styles.taskCard,
+                                            {
+                                                // Use theme.colors.background for the card content area
+                                                backgroundColor: theme.colors.background,
+                                                // Hardcoded shadow & overdue border
+                                                shadowColor: theme.dark ? '#FFFFFF' : '#000000',
+                                                shadowOpacity: theme.dark ? 0.2 : 0.08,
+                                                borderColor: isOverdue ? statusColors.error : 'transparent',
+                                                borderWidth: 1,
+                                            }
+                                        ]}
+                                    >
+                                        <Card.Content style={styles.cardInnerContent}>
+                                            {/* Task Title */}
+                                            <View style={styles.taskHeader}>
+                                                <Text style={[styles.taskTitle, { color: theme.colors.text }]}>{task.title}</Text>
 
-                                        {/* Deadline */}
-                                        <View style={styles.row}>
-                                            <Ionicons name="calendar-outline" size={18} color={isOverdue ? '#FF3B30' : theme.colors.text} style={{ marginRight: 6 }} />
-                                            <Text style={{ color: isOverdue ? '#FF3B30' : theme.colors.text, fontSize: 15 }}>
-                                                {task.deadline?.toDate?.()?.toDateString?.() || 'N/A'}
-                                            </Text>
-                                        </View>
-
-                                        {/* Description */}
-                                        {task.description ? (
-                                            <View style={styles.row}>
-                                                <Ionicons name="document-text-outline" size={18} color={theme.colors.text} style={{ marginRight: 6, marginTop: 2 }} />
-                                                <Text style={{ color: theme.colors.text, fontSize: 15, flexShrink: 1 }}>{task.description}</Text>
-                                            </View>
-                                        ) : null}
-
-                                        {/* Remarks */}
-                                        {task.remarks?.length > 0 && (
-                                            <View style={styles.remarksWrapper}>
-                                                {task.remarks.map((remark, index) => (
-                                                    <View key={index} style={styles.remarkChip}>
-                                                        <Ionicons name="chatbubble-ellipses-outline" size={14} color="#333" style={{ marginRight: 4 }} />
-                                                        <Text style={{ fontSize: 13, color: '#333' }}>{remark}</Text>
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        )}
-
-                                        {/* Actions Row */}
-                                        <View style={styles.actionsRow}>
-                                            <IconButton
-                                                icon="trash-can-outline"
-                                                iconColor="#FF3B30"
-                                                size={26}
-                                                onPress={() => deleteTask(task.taskId)}
-                                            />
-                                            <IconButton
-                                                icon="pencil-outline"
-                                                iconColor={theme.colors.primary}
-                                                size={26}
-                                                onPress={() => openAddRemark(task.taskId)}
-                                            />
-
-                                            {/* Status Dropdown */}
-                                            <Menu
-                                                visible={menuVisible === task.taskId}
-                                                onDismiss={() => setMenuVisible(null)}
-                                                anchor={
-                                                    <View style={styles.statusContainer}>
-                                                        <Ionicons name="ellipse" size={12} color={statusColors[task.status]} style={{ marginRight: 6 }} />
-                                                        <Text
-                                                            style={{ fontSize: 13, color: statusColors[task.status], fontWeight: '600' }}
+                                                {/* Status Dropdown */}
+                                                <Menu
+                                                    visible={menuVisible === task.taskId}
+                                                    onDismiss={() => setMenuVisible(null)}
+                                                    anchor={
+                                                        <TouchableOpacity
+                                                            style={[styles.statusContainer, { backgroundColor: statusColors.backgroundVariant }]}
                                                             onPress={() => setMenuVisible(task.taskId)}
                                                         >
-                                                            {task.status.toUpperCase()}
+                                                            <Ionicons name="ellipse" size={10} color={statusColors[task.status]} style={{ marginRight: 4 }} />
+                                                            <Text style={{ fontSize: 13, color: statusColors[task.status], fontWeight: '700' }}>
+                                                                {task.status.toUpperCase()}
+                                                            </Text>
+                                                            {/* Using inferred secondary color for icon */}
+                                                            <Ionicons name="chevron-down" size={14} color={statusColors.textSecondary} style={{ marginLeft: 4 }} />
+                                                        </TouchableOpacity>
+                                                    }
+                                                >
+                                                    {statusOptions.map((status) => (
+                                                        <Menu.Item
+                                                            key={status}
+                                                            onPress={() => updateStatus(task.taskId, status)}
+                                                            title={status.toUpperCase()}
+                                                            leadingIcon={() => (
+                                                                <Ionicons name="ellipse" size={12} color={statusColors[status]} />
+                                                            )}
+                                                            // Menu items use card color for background, text color for text
+                                                            style={{ backgroundColor: theme.colors.card }}
+                                                            titleStyle={{ color: theme.colors.text }}
+                                                        />
+                                                    ))}
+                                                </Menu>
+                                            </View>
+
+                                            {/* Description */}
+                                            {task.description ? (
+                                                <View style={styles.rowDetail}>
+                                                    <Text style={[styles.detailText, { color: statusColors.textSecondary, flexShrink: 1 }]}>
+                                                        {task.description}
+                                                    </Text>
+                                                </View>
+                                            ) : null}
+
+                                            {/* Deadline & Overdue Tag */}
+                                            <View style={styles.rowDetail}>
+                                                {/* Using hardcoded error color for overdue, secondary text otherwise */}
+                                                <Ionicons name="time-outline" size={16} color={isOverdue ? statusColors.error : statusColors.textSecondary} style={{ marginRight: 6 }} />
+                                                <Text style={{ color: isOverdue ? statusColors.error : statusColors.textSecondary, fontSize: 13, fontWeight: '500' }}>
+                                                    {task.deadline?.toDate?.()?.toLocaleDateString?.() || 'No Deadline'}
+                                                </Text>
+                                                {isOverdue && (
+                                                    <Text style={[styles.overdueTag, { backgroundColor: statusColors.error, color: '#FFFFFF' }]}>
+                                                        OVERDUE
+                                                    </Text>
+                                                )}
+                                            </View>
+
+                                            {/* Remarks */}
+                                            {task.remarks?.length > 0 && (
+                                                <View style={styles.remarksWrapper}>
+                                                    <Ionicons name="chatbubble-ellipses-outline" size={16} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                                                    <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>Remarks:</Text>
+                                                    {task.remarks.slice(0, 1).map((remark, index) => (
+                                                        <Text key={index} style={[styles.remarkText, { color: statusColors.textSecondary }]}>
+                                                            {remark}
                                                         </Text>
-                                                    </View>
-                                                }
-                                            >
-                                                {statusOptions.map((status) => (
-                                                    <Menu.Item
-                                                        key={status}
-                                                        onPress={() => updateStatus(task.taskId, status)}
-                                                        title={status.toUpperCase()}
-                                                        leadingIcon={() => (
-                                                            <Ionicons name="ellipse" size={12} color={statusColors[status]} />
-                                                        )}
-                                                    />
-                                                ))}
-                                            </Menu>
-                                        </View>
-                                    </Card.Content>
-                                </Card>
+                                                    ))}
+                                                </View>
+                                            )}
+
+                                            {/* Actions Row */}
+                                            {/* Using theme.colors.border (88C540) as the separator line, as it is the only border color provided */}
+                                            <View style={[styles.actionsRow, { borderTopColor: theme.colors.border }]}>
+                                                <Button
+                                                    mode='outlined'
+                                                    onPress={() => openAddRemark(task.taskId)}
+                                                    icon="comment-plus-outline"
+                                                    labelStyle={styles.actionButtonText}
+                                                    textColor={theme.colors.primary}
+                                                    style={[styles.actionButton, { borderColor: theme.colors.primary, borderWidth: 1 }]}
+                                                >
+                                                    Remark
+                                                </Button>
+                                                <Button
+                                                    mode='outlined'
+                                                    onPress={() => deleteTask(task.taskId)}
+                                                    icon="trash-can-outline"
+                                                    labelStyle={styles.actionButtonText}
+                                                    // Using hardcoded error color for delete action
+                                                    textColor={statusColors.error}
+                                                    style={[styles.actionButton, { borderColor: statusColors.error, borderWidth: 1 }]}
+                                                >
+                                                    Delete
+                                                </Button>
+                                            </View>
+                                        </Card.Content>
+                                    </Card>
+                                </View>
                             );
                         })
                     ) : (
-                        <Text style={{ color: theme.colors.text, textAlign: 'center', marginTop: 20, fontSize: 15 }}>
-                            No tasks assigned
-                        </Text>
+                        <View style={{ paddingVertical: 40 }}>
+                            <Ionicons name="file-tray-outline" size={50} color={statusColors.textSecondary} style={{ alignSelf: 'center', marginBottom: 10 }} />
+                            <Text style={{ color: statusColors.textSecondary, textAlign: 'center', fontSize: 16 }}>
+                                No tasks assigned to {selectedUser?.name}
+                            </Text>
+                        </View>
                     )}
                 </ScrollView>
-
-                {/* Close Button */}
-                <IconButton
-                    icon="close-circle-outline"
-                    iconColor={theme.colors.primary}
-                    size={38}
-                    style={{ alignSelf: 'center', marginTop: 16 }}
-                    onPress={onDismiss}
-                />
 
                 {/* Add Remark Modal */}
                 <Portal>
                     <Modal
                         visible={remarkModalVisible}
                         onDismiss={() => setRemarkModalVisible(false)}
-                        contentContainerStyle={[styles.modalContent, { backgroundColor: theme.colors.card }]}
+                        contentContainerStyle={[styles.remarkModalContent, { backgroundColor: theme.colors.card }]}
                     >
-                        <Text style={[styles.headerText, { fontSize: 18, color: theme.colors.text }]}>Add Remark</Text>
+                        <Text style={[styles.remarkModalHeader, { color: theme.colors.text }]}>Add Task Remark</Text>
                         <TextInput
-                            placeholder="Enter your remark"
+                            placeholder="Enter your remark..."
+                            placeholderTextColor={statusColors.textSecondary}
                             value={remarkText}
                             onChangeText={setRemarkText}
-                            style={[styles.remarkInput, { backgroundColor: theme.colors.background }]}
+                            mode="outlined"
+                            multiline
+                            numberOfLines={4}
+                            theme={{ colors: { primary: theme.colors.primary, background: theme.colors.background } }}
+                            style={[styles.remarkInput]}
                         />
-                        <IconButton
-                            icon="checkmark-circle-outline"
-                            iconColor={theme.colors.primary}
-                            size={34}
+
+                        <Button
+                            mode='contained'
                             onPress={saveRemark}
-                            style={{ alignSelf: 'center', marginTop: 10 }}
-                        />
+                            buttonColor={theme.colors.primary}
+                            // Using hardcoded white text for button contrast
+                            labelStyle={{ color: '#FFFFFF', fontWeight: '700' }}
+                            style={{ borderRadius: 12, marginTop: 10 }}
+                        >
+                            Save Remark
+                        </Button>
                     </Modal>
                 </Portal>
             </Modal>
@@ -220,34 +278,127 @@ const PremiumTasksModal = ({ visible, onDismiss, selectedUser, theme }) => {
 };
 
 const styles = StyleSheet.create({
-    modalContent: { padding: 22, borderRadius: 18, marginHorizontal: 18 },
-    headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
-    headerText: { fontSize: 22, fontWeight: '700' },
-    taskCard: { borderRadius: 16, elevation: 3, marginBottom: 18, padding: 6 },
-    taskHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-    taskTitle: { fontSize: 18, fontWeight: '600' },
-    row: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    remarksWrapper: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
-    remarkChip: {
+    modalContent: {
+        paddingHorizontal: 20,
+        paddingVertical: 20,
+        borderRadius: 24,
+        marginHorizontal: 16,
+        width: width * 0.9,
+        alignSelf: 'center',
+    },
+    closeButton: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        zIndex: 10,
+    },
+    headerRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#E0E0E0',
+        marginBottom: 20,
         paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 14,
-        marginRight: 8,
-        marginBottom: 8
     },
-    actionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 },
+    headerText: {
+        fontSize: 24,
+        fontWeight: '800'
+    },
+    taskContainer: {
+        marginBottom: 16,
+        borderRadius: 18,
+    },
+    taskCard: {
+        borderRadius: 18,
+        elevation: 6,
+        shadowOffset: { width: 0, height: 4 },
+        shadowRadius: 8,
+    },
+    cardInnerContent: {
+        paddingVertical: 15,
+    },
+    taskHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    taskTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        flexShrink: 1,
+        marginRight: 10,
+    },
+    rowDetail: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 6,
+        paddingHorizontal: 2,
+    },
+    detailText: {
+        fontSize: 14,
+        fontWeight: '400',
+        marginLeft: 6,
+    },
+    overdueTag: {
+        fontSize: 10,
+        fontWeight: '800',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+        marginLeft: 10,
+        overflow: 'hidden',
+    },
+    remarksWrapper: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        marginTop: 10,
+        paddingHorizontal: 2,
+    },
+    remarkText: {
+        fontSize: 13,
+        marginLeft: 4,
+        flexShrink: 1,
+    },
+    actionsRow: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        marginTop: 15,
+        borderTopWidth: 1,
+        paddingTop: 10,
+    },
+    actionButton: {
+        borderRadius: 10,
+        marginLeft: 10,
+        minWidth: 100,
+    },
+    actionButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
     statusContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F5F5F5',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 14
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 18,
     },
-    remarkInput: { borderRadius: 10, paddingHorizontal: 14, marginBottom: 14 }
+    remarkModalContent: {
+        padding: 24,
+        borderRadius: 24,
+        marginHorizontal: 30,
+    },
+    remarkModalHeader: {
+        fontSize: 20,
+        fontWeight: '700',
+        marginBottom: 15,
+        textAlign: 'center',
+    },
+    remarkInput: {
+        marginBottom: 15,
+        borderRadius: 12,
+        paddingHorizontal: 0,
+    }
 });
 
 export default PremiumTasksModal;

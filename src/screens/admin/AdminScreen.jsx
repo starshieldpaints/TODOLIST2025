@@ -14,6 +14,7 @@ import firestore from '@react-native-firebase/firestore';
 
 import Geolocation from 'react-native-geolocation-service';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import MyTask from "../user/MyTasks";
 
 const Tab = createBottomTabNavigator();
 
@@ -102,21 +103,44 @@ const AdminTabs = () => {
 
   return (
     <Tab.Navigator
+    
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.text,
+        // tabBarStyle: {
+        //   backgroundColor: theme.colors.card,
+        //   borderTopWidth: 0,
+        //   elevation: 6,
+        //   height: 80,
+        //   paddingTop:0,
+  
+        // },
+
         tabBarStyle: {
           backgroundColor: theme.colors.card,
+          borderTopColor: theme.colors.border,
           borderTopWidth: 0,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
           elevation: 0,
-          height: 60,
+          height: 70,
         },
+        
+        
         tabBarBackground: () => <View style={{ flex: 1, backgroundColor: theme.colors.card }} />,
         safeAreaInsets: { bottom: 0 },
+        
       }}
     >
       <Tab.Screen name="Tasks" component={TasksScreen} options={{ tabBarIcon: getTabIcon('checkmark-done-outline') }} />
+      <Tab.Screen
+        name="My Tasks"
+        component={MyTask}
+        options={{ tabBarIcon: ({ color, size }) => <Icon name="add-outline" color={color} size={size} /> }}
+      />
       <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarIcon: getTabIcon('grid-outline') }} />
       <Tab.Screen name="Assign" component={AssignScreen} options={{ tabBarIcon: getTabIcon('clipboard-outline') }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: getTabIcon('person-outline') }} />

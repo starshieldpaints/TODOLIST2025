@@ -12,6 +12,7 @@ import ManageAdminScreen from './ManageAdminScreen';
 import ManageUserScreen from './ManageUserScreen';
 import ProfileScreen from '../user/ProfileScreen';
 import { ThemeContext } from '../../context/ThemeContext';
+import MyTask from "../user/MyTasks";
 
 const Tab = createBottomTabNavigator();
 
@@ -118,12 +119,24 @@ const SuperAdminTabs = () => {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.text,
+        // tabBarStyle: {
+        //   backgroundColor: theme.colors.card,
+        //   borderTopWidth: 0,
+        //   elevation: 0,
+        //   height: 60,
+     
+        // },
+
         tabBarStyle: {
           backgroundColor: theme.colors.card,
+          borderTopColor: theme.colors.border,
           borderTopWidth: 0,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
           elevation: 0,
-          height: 60,
-     
+          height: 70,
         },
         tabBarSafeAreaInsets: { top: 0 },
         tabBarIcon: ({ color, size }) => {
@@ -132,11 +145,18 @@ const SuperAdminTabs = () => {
           else if (route.name === 'ManageAdmin') iconName = 'people-outline';
           else if (route.name === 'ManageUser') iconName = 'person-add-outline';
           else if (route.name === 'Profile') iconName = 'person-circle-outline';
+          else if (route.name === 'My Tasks') iconName = 'add-outline';
+
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen
+        name="My Tasks"
+        component={MyTask}
+        options={{title:'My Tasks'}}
+      />
       <Tab.Screen name="ManageAdmin" component={ManageAdminScreen} options={{ title: 'Admins' }} />
       <Tab.Screen name="ManageUser" component={ManageUserScreen} options={{ title: 'Users' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} />

@@ -50,7 +50,6 @@ export default function SplashScreen() {
                 Task Manager
             </Text>
 
-            {/* Loading Spinner */}
             <ActivityIndicator
                 size="large"
                 color={isDark ? "#88C540" : "#005BAC"}

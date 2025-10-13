@@ -669,10 +669,10 @@ const ManageUsersScreenUI = () => {
                             </Text>
                         </View>
                     }
+                    
                 />
             </SafeAreaView>
 
-            {/* REACT NATIVE PAPER MODAL for Task Assignment */}
             <Modal
                 visible={taskModalData.isVisible}
                 onDismiss={handleModalDismiss}
@@ -705,7 +705,6 @@ const ManageUsersScreenUI = () => {
 
                         <Text style={[styles.modalLabel, { color: theme.colors.textSecondary }]}>Deadline</Text>
 
-                        {/* 🌟 DATE PICKER TRIGGER 🌟 */}
                         <Pressable
                             style={[styles.datePickerButton, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, opacity: isSubmitting ? 0.6 : 1 }]}
                             onPress={showPicker}
@@ -716,7 +715,7 @@ const ManageUsersScreenUI = () => {
                             </Text>
                         </Pressable>
 
-                        {/* 🌟 react-native-date-picker COMPONENT 🌟 */}
+
                         <DatePicker
                             modal
                             open={datePickerVisible}
@@ -780,7 +779,7 @@ const ManageUsersScreenUI = () => {
                 </Modal>
             </Portal>
 
-            {/* 🌟 2. CHANGE/ASSIGN ADMIN MODAL 🌟 */}
+
             <AdminPickerModal
                 isVisible={changeAdminModalVisible && !!selectedUserForAdminAction}
                 onDismiss={handleAdminPickerDismiss}

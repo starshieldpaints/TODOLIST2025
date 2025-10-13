@@ -256,7 +256,6 @@ const RoleModal = ({
 
     const handleRoleSelect = async (newRole) => {
         if (newRole === selectedAdmin.currentRole) {
-            console.log(`[INFO] No change needed. ${selectedAdmin.name} is already a ${newRole.toUpperCase()}.`);
             setIsModalVisible(false);
             return;
         }
@@ -918,6 +917,7 @@ const ManageAdminScreen = () => {
                         </Text>
                     </View>
                 }
+                style={{marginBottom:10}}
             />
 
             {/* Modals */}

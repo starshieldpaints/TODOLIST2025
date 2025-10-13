@@ -13,7 +13,8 @@ import TasksScreen from './TaskScreen';
 import DashboardScreen from './DashboardScreen';
 import ProfileScreen from './ProfileScreen';
 import {requestPermissionsAndSaveLocation} from "../../utils/requestPermission";
-import CreateScreen from "./CreateScreen"
+import MyTask from "./MyTasks";
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator();
 
@@ -141,9 +142,9 @@ const UserScreen = () => {
                 options={{ tabBarIcon: ({ color, size }) => <Icon name="checkmark-done-outline" color={color} size={size} /> }}
             />
             <Tab.Screen
-                name="Create"
-                component={CreateScreen}
-                options={{ tabBarIcon: ({ color, size }) => <Icon name="add-circle-outline" color={color} size={size} /> }}
+                name="My Tasks"
+                component={MyTask}
+                options={{ tabBarIcon: ({ color, size }) => <Icon name="list-outline" color={color} size={size} /> }}
             />
             <Tab.Screen
                 name="Dashboard"

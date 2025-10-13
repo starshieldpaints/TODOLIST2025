@@ -1,9 +1,12 @@
-import notifee from '@notifee/react-native';
+import { Platform } from 'react-native';
+import notifee, { AndroidImportance } from '@notifee/react-native';
 
 export async function createDefaultChannel() {
-    await notifee.createChannel({
-        id: 'default',
-        name: 'Default Channel',
-        importance: notifee.AndroidImportance.HIGH, // Must be HIGH to show in tray
-    });
+    if (Platform.OS === 'android') {
+        await notifee.createChannel({
+            id: 'default',
+            name: 'Default Channel',
+            importance: AndroidImportance.HIGH,
+        });
+    }
 }

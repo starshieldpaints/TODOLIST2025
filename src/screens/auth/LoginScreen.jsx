@@ -122,7 +122,10 @@ const LoginScreen = () => {
                     contentStyle={styles.buttonContent}
                     disabled={loading}
                 >
-                    {loading ? <ActivityIndicator color="#fff" /> : 'Login'}
+                    {/* {loading ? <ActivityIndicator color="#fff" /> : 'Login'}
+                     */}
+
+                     Login
                 </Button>
 
                 {/* Added Forgot Password button (common UX) 

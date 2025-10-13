@@ -1,7 +1,33 @@
+
+
 import React, { useContext } from 'react';
-import { View, Text, Modal, Pressable, StyleSheet, Dimensions, Image } from 'react-native';
+import { View, Text, Modal, Pressable, StyleSheet, Dimensions, Image, ScrollView } from 'react-native';
 import { ThemeContext } from '../../context/ThemeContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+
+// --- UTILITY FUNCTIONS (Copied from DashboardScreen for self-containment) ---
+
+const safeDate = (timestamp) => {
+    if (!timestamp) return new Date();
+
+    // If it's a Firestore timestamp
+    if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate();
+    }
+
+    // If it's already a Date object
+    if (timestamp instanceof Date) {
+        return timestamp;
+    }
+
+    // If it's a string or number
+    return new Date(timestamp);
+};
+
+// Calculate hours between two Date objects
+const hoursBetween = (start, end) => (end - start) / 1000 / 3600;
+
+// --------------------------------------------------------------------------
 
 const useTheme = () => {
     const { theme } = useContext(ThemeContext);
@@ -24,12 +50,33 @@ export const UserDetailModal = ({ selectedUserDetail, tasks, setSelectedUserDeta
 
     const userTasks = tasks.filter(t => t.assignedTo === user.uid);
 
-    const pendingCount = userTasks.filter(t => t.status === 'pending' || t.status === 'Pending').length;
-    const inProgressCount = userTasks.filter(t => t.status === 'in progress' || t.status === 'In Progress').length;
-    const completedCount = userTasks.filter(t => t.status === 'completed' || t.status === 'Completed').length;
+    // --- TASK ANALYTICS CALCULATIONS ---
+    const totalTasks = userTasks.length;
+    const todoCount = userTasks.filter(t => t.status === 'todo' || t.status === 'pending').length;
+    const inProgressCount = userTasks.filter(t => t.status === 'in progress' || t.status === 'In Progress' || t.status === 'inprogress').length;
+    const completedTasks = userTasks.filter(t => t.status === 'completed' || t.status === 'Completed');
+    const completedCount = completedTasks.length;
+
+    // Completion Time Analysis
+    const completedOnTime = completedTasks.filter(t => safeDate(t.updatedAt) <= safeDate(t.deadline)).length;
+
+    const totalCompletionHours = completedTasks.reduce((sum, t) => {
+        // Only calculate time for tasks that have a completion and creation date
+        if (t.createdAt && t.updatedAt) {
+            return sum + hoursBetween(safeDate(t.createdAt), safeDate(t.updatedAt));
+        }
+        return sum;
+    }, 0);
+
+    const avgCompletionTime = completedCount > 0 ? totalCompletionHours / completedCount : 0;
+
+    // Rate Calculations
+    const completionRate = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
+    const onTimeRate = completedCount > 0 ? (completedOnTime / completedCount) * 100 : 0;
+    // --- END ANALYTICS CALCULATIONS ---
 
     const chartColors = {
-        pending: theme.colors.warning || '#f39c12',
+        todo: theme.colors.textSecondary || '#7f8c8d',
         inProgress: theme.colors.info || '#3498db',
         completed: theme.colors.success || '#2ecc71',
     };
@@ -99,6 +146,16 @@ export const UserDetailModal = ({ selectedUserDetail, tasks, setSelectedUserDeta
             paddingHorizontal: normalize(20),
             paddingBottom: normalize(30),
             paddingTop: normalize(5),
+            gap: normalize(15), // Add gap for sections
+        },
+        sectionTitle: {
+            fontSize: normalize(18),
+            fontWeight: '800',
+            color: theme.colors.text,
+            marginBottom: normalize(10),
+            paddingTop: normalize(5),
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.border + '50',
         },
         statsRow: {
             flexDirection: 'row',
@@ -126,12 +183,42 @@ export const UserDetailModal = ({ selectedUserDetail, tasks, setSelectedUserDeta
             marginTop: normalize(2),
             textAlign: 'center',
         },
+        analyticsCard: {
+            flex: 1,
+            paddingVertical: normalize(10),
+            paddingHorizontal: normalize(10),
+            borderRadius: normalize(12),
+            backgroundColor: theme.colors.sectionBackground,
+            borderWidth: 1,
+            borderColor: theme.colors.border + '30',
+        },
+        analyticsLabel: {
+            fontSize: normalize(13),
+            color: theme.colors.text,
+            fontWeight: '600',
+        },
+        analyticsValue: {
+            fontSize: normalize(18),
+            fontWeight: '900',
+            color: theme.colors.text,
+            marginTop: normalize(2),
+        }
     });
 
     const TaskStatCard = ({ label, count, color }) => (
         <View style={geometricStyles.statCard}>
             <Text style={[geometricStyles.statValue, { color }]}>{count}</Text>
             <Text style={[geometricStyles.statLabel, { color: theme.colors.text }]}>{label}</Text>
+        </View>
+    );
+
+    const AnalyticsCard = ({ label, value, unit, color }) => (
+        <View style={geometricStyles.analyticsCard}>
+            <Text style={geometricStyles.analyticsLabel}>{label}</Text>
+            <Text style={[geometricStyles.analyticsValue, { color: color || theme.colors.text }]}>
+                {value}
+                {unit && <Text style={{ fontSize: normalize(14), fontWeight: '600', color: theme.colors.text }}>{unit}</Text>}
+            </Text>
         </View>
     );
 
@@ -170,7 +257,8 @@ export const UserDetailModal = ({ selectedUserDetail, tasks, setSelectedUserDeta
                         <Text style={[geometricStyles.contact,]}>{user.email || user.phone}</Text>
                     </View>
 
-                    <View style={geometricStyles.contentContainer}>
+                    <ScrollView contentContainerStyle={geometricStyles.contentContainer}>
+                        <Text style={geometricStyles.sectionTitle}>Task Summary (Total Tasks : {totalTasks})</Text>
 
                         <View style={geometricStyles.statsRow}>
                             <TaskStatCard
@@ -184,33 +272,47 @@ export const UserDetailModal = ({ selectedUserDetail, tasks, setSelectedUserDeta
                                 color={chartColors.inProgress}
                             />
                             <TaskStatCard
-                                label="Pending"
-                                count={pendingCount}
-                                color={chartColors.pending}
+                                label="To Do"
+                                count={todoCount}
+                                color={chartColors.todo}
                             />
                         </View>
 
-                    </View>
+                        {/* --- Analytics Section --- */}
+                        <Text style={geometricStyles.sectionTitle}>Performance Analytics</Text>
+
+                        <View style={geometricStyles.statsRow}>
+                            <AnalyticsCard
+                                label="Completion Rate"
+                                value={completionRate.toFixed(1)}
+                                unit="%"
+                                color={completionRate >= 80 ? chartColors.completed : chartColors.inProgress}
+                            />
+                            <AnalyticsCard
+                                label="On-Time Rate"
+                                value={onTimeRate.toFixed(1)}
+                                unit="%"
+                                color={onTimeRate >= 80 ? chartColors.completed : chartColors.todo}
+                            />
+                        </View>
+
+                        <View style={geometricStyles.statsRow}>
+                            <AnalyticsCard
+                                label="Completed On-Time"
+                                value={completedOnTime}
+                                color={chartColors.completed}
+                            />
+                            <AnalyticsCard
+                                label="Avg. Time to Complete"
+                                value={avgCompletionTime.toFixed(1)}
+                                unit=" hrs"
+                                color={theme.colors.primary}
+                            />
+                        </View>
+
+                    </ScrollView>
                 </View>
             </Pressable>
         </Modal>
     );
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

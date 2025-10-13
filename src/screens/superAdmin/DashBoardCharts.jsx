@@ -10,13 +10,11 @@ const DashboardCharts = ({ tasks, admins, users }) => {
     const today = new Date();
     const chartHeight = Math.min(250, screenWidth * 0.6);
 
-    // Helper to get first name
     const getFirstName = (fullName) => {
         if (!fullName) return '';
         return fullName.split(' ')[0];
     };
 
-    // Task Status Pie Data
     const taskStats = {
         pending: tasks.filter(t => t.status === 'pending').length,
         inprogress: tasks.filter(t => t.status === 'inprogress').length,
@@ -31,7 +29,6 @@ const DashboardCharts = ({ tasks, admins, users }) => {
         { name: 'Rejected', count: taskStats.rejected, color: '#e74c3c', legendFontColor: theme.colors.text, legendFontSize: Math.max(10, screenWidth / 35) },
     ];
 
-    // Tasks per Admin / Efficiency
     const tasksPerAdmin = admins.map(admin => {
         const assignedTasks = tasks.filter(t => t.assignedBy === admin.adminId);
         const completedOnTime = assignedTasks.filter(
@@ -40,9 +37,8 @@ const DashboardCharts = ({ tasks, admins, users }) => {
         const efficiency = assignedTasks.length ? Math.round((completedOnTime / assignedTasks.length) * 100) : 0;
         return { name: admin.name || 'Admin', count: assignedTasks.length, efficiency };
     });
-    
 
-    // Tasks per User / Efficiency
+
     const tasksPerUser = users.map(user => {
         const assignedTasks = tasks.filter(t => t.assignedTo === user.uid);
         const completedOnTime = assignedTasks.filter(
@@ -52,7 +48,6 @@ const DashboardCharts = ({ tasks, admins, users }) => {
         return { name: user.name || 'User', count: assignedTasks.length, efficiency };
     });
 
-    // Chart datasets with first names
     const adminTaskBarData = {
         labels: tasksPerAdmin.map(a => getFirstName(a.name)),
         datasets: [{ data: tasksPerAdmin.map(a => a.count) }],
@@ -70,7 +65,6 @@ const DashboardCharts = ({ tasks, admins, users }) => {
         datasets: [{ data: tasksPerUser.map(u => u.efficiency) }],
     };
 
-    // Deadlines
     const upcoming = tasks.filter(t => new Date(t.deadline) >= today).length;
     const overdue = tasks.filter(t => new Date(t.deadline) < today && t.status !== 'completed').length;
     const deadlineBarData = {
@@ -78,7 +72,6 @@ const DashboardCharts = ({ tasks, admins, users }) => {
         datasets: [{ data: [upcoming, overdue] }],
     };
 
-    // Top Performer Pie
     const totalTasks = tasks.length;
     const topAdmin = tasksPerAdmin.reduce((prev, curr) => (curr.efficiency > prev.efficiency ? curr : prev), { efficiency: 0 });
     const topUser = tasksPerUser.reduce((prev, curr) => (curr.efficiency > prev.efficiency ? curr : prev), { efficiency: 0 });
@@ -91,7 +84,6 @@ const DashboardCharts = ({ tasks, admins, users }) => {
         { name: 'Others', count: otherTasks, color: '#7f8c8d', legendFontColor: theme.colors.text, legendFontSize: Math.max(10, screenWidth / 35) },
     ];
 
-    // Task Trends
     const dates = [...Array(7)].map((_, i) => {
         const d = new Date();
         d.setDate(today.getDate() - (6 - i));
@@ -110,15 +102,13 @@ const DashboardCharts = ({ tasks, admins, users }) => {
         decimalPlaces: 0,
     };
 
-    // Dynamic chart widths
-    const barWidth = 60; // width per bar
+    const barWidth = 60;
     const adminChartWidth = Math.max(screenWidth, tasksPerAdmin.length * barWidth);
     const userChartWidth = Math.max(screenWidth, tasksPerUser.length * barWidth);
     const simpleChartWidth = Math.max(screenWidth, 100);
 
     return (
         <ScrollView contentContainerStyle={{ paddingVertical: 20, paddingHorizontal: 16 }}>
-            {/* Task Status */}
             <Text style={{ color: theme.colors.text, fontWeight: '700', marginBottom: 8 }}>Task Status</Text>
             <PieChart
                 data={taskPieData}
@@ -131,7 +121,6 @@ const DashboardCharts = ({ tasks, admins, users }) => {
                 absolute
             />
 
-            {/* Users vs Admins */}
             <Text style={{ color: theme.colors.text, fontWeight: '700', marginVertical: 8, fontFamily: Fonts.Kalam.Regular }}>Users vs Admins</Text>
             <ScrollView horizontal>
                 <BarChart
@@ -145,7 +134,6 @@ const DashboardCharts = ({ tasks, admins, users }) => {
                 />
             </ScrollView>
 
-            {/* Tasks per Admin */}
             <Text style={{ color: theme.colors.text, fontWeight: '700', marginVertical: 8 }}>Tasks per Admin</Text>
             <ScrollView horizontal>
                 <BarChart
@@ -159,7 +147,6 @@ const DashboardCharts = ({ tasks, admins, users }) => {
                 />
             </ScrollView>
 
-            {/* Admin Efficiency */}
             <Text style={{ color: theme.colors.text, fontWeight: '700', marginVertical: 8 }}>Admin Efficiency (%)</Text>
             <ScrollView horizontal>
                 <BarChart
@@ -173,7 +160,6 @@ const DashboardCharts = ({ tasks, admins, users }) => {
                 />
             </ScrollView>
 
-            {/* Tasks per User */}
             <Text style={{ color: theme.colors.text, fontWeight: '700', marginVertical: 8 }}>Tasks per User</Text>
             <ScrollView horizontal>
                 <BarChart
@@ -187,7 +173,6 @@ const DashboardCharts = ({ tasks, admins, users }) => {
                 />
             </ScrollView>
 
-            {/* User Efficiency */}
             <Text style={{ color: theme.colors.text, fontWeight: '700', marginVertical: 8 }}>User Efficiency (%)</Text>
             <ScrollView horizontal>
                 <BarChart
@@ -201,7 +186,6 @@ const DashboardCharts = ({ tasks, admins, users }) => {
                 />
             </ScrollView>
 
-            {/* Deadlines Overview */}
             <Text style={{ color: theme.colors.text, fontWeight: '700', marginVertical: 8 }}>Deadlines Overview</Text>
             <ScrollView horizontal>
                 <BarChart
@@ -215,7 +199,6 @@ const DashboardCharts = ({ tasks, admins, users }) => {
                 />
             </ScrollView>
 
-            {/* Top Performer Contribution */}
             <Text style={{ color: theme.colors.text, fontWeight: '700', marginVertical: 8 }}>Top Performer Contribution</Text>
             <PieChart
                 data={topPerformerPieData}
@@ -228,7 +211,6 @@ const DashboardCharts = ({ tasks, admins, users }) => {
                 absolute
             />
 
-            {/* Task Trends */}
             <Text style={{ color: theme.colors.text, fontWeight: '700', marginVertical: 8 }}>Task Trends (Last 7 Days)</Text>
             <LineChart
                 data={taskTrendData}
