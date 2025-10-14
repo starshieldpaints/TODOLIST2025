@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions, Modal, TouchableOpacity, Pressable, Alert, Image, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Dimensions, Modal, TouchableOpacity, Pressable, Alert, Image, ActivityIndicator, Platform, FlatList } from 'react-native';
 import { Card, Snackbar } from 'react-native-paper';
 import { PieChart, BarChart, LineChart } from 'react-native-chart-kit';
 import firestore from '@react-native-firebase/firestore';
@@ -267,9 +267,6 @@ const generateUserPdfContent = async (user) => {
 
     return pdfDoc.save();
 };
-// -----------------------------------------------------------------
-
-
 const UserPerformanceCard = ({ user, theme, scale, onPress }) => {
     const { name, profilePicUrl } = user;
     return (
@@ -300,8 +297,6 @@ const UserPerformanceCard = ({ user, theme, scale, onPress }) => {
     );
 };
 
-
-// --- MAIN DASHBOARD SCREEN ---
 const DashboardScreen = () => {
     const { theme } = useContext(ThemeContext);
     const scale = screenWidth / 375;
@@ -499,6 +494,16 @@ const DashboardScreen = () => {
     // ---------------------------------------------
     // PDF Generation and DOWNLOAD Logic (Unchanged)
     // ---------------------------------------------
+
+    const renderUserCard = ({ item }) => (
+        // 'item' here is one user object from the tasksPerUser array
+        <UserPerformanceCard
+            user={item}
+            theme={theme}
+            scale={scale}
+            onPress={handleUserPress}
+        />
+    );
 
     const createAndSharePdf = async (contentGenerator, data, fileNameBase) => {
         if (isDownloading) return;
@@ -817,17 +822,22 @@ const DashboardScreen = () => {
 
                 {/* 👤 USER SPECIFIC CARD LIST */}
                 <Text style={[styles.sectionTitle, { fontSize: 18 * scale, color: theme.colors.text, marginTop: 24 }]}>Detailed User List</Text>
+                <ScrollView 
+                    style={{ flex: 1 }} 
+                    contentContainerStyle={{ paddingBottom: 100 }}>
                 {tasksPerUser.map(user => (
-                    <UserPerformanceCard
-                        key={user.uid}
-                        user={user}
-                        theme={theme}
-                        scale={scale}
-                        onPress={handleUserPress}
-                    />
+                    
+                        <UserPerformanceCard
+                            key={user.uid}
+                            user={user}
+                            theme={theme}
+                            scale={scale}
+                            onPress={handleUserPress}
+                        />
+                  
                 ))}
-
-                {/* User Details Modal */}
+                </ScrollView>
+              
                 <Modal
                     animationType="slide"
                     transparent={true}
@@ -836,8 +846,6 @@ const DashboardScreen = () => {
                 >
                     <View style={styles.modalBackground}>
                         <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
-
-                            {/* User Header */}
                             <View style={styles.modalHeader}>
                                 {selectedUser?.profilePicUrl ? (
                                     <Image
@@ -854,8 +862,6 @@ const DashboardScreen = () => {
 
                                 </View>
                             </View>
-
-                            {/* Contact Details */}
                             <View style={styles.modalDetailRow}>
                                 <Ionicons name="mail-outline" size={16 * scale} color={theme.colors.primary} />
                                 <Text style={[styles.modalDetailText, { color: theme.colors.text }]}>
@@ -868,8 +874,6 @@ const DashboardScreen = () => {
                                     <Text style={{ fontWeight: 'bold' }}>Phone:</Text> {selectedUser?.phone || 'N/A'}
                                 </Text>
                             </View>
-
-                            {/* Task Metrics */}
                             <View style={[styles.modalMetricsContainer, { borderColor: theme.colors.border }]}>
                                 <Text style={[styles.modalMetricsTitle, { color: theme.colors.text, fontSize: 16 * scale }]}>Task Performance Summary</Text>
                                 <View style={styles.modalMetricRow}>
@@ -889,8 +893,6 @@ const DashboardScreen = () => {
                                     <Text style={[styles.modalMetricValue, { color: '#f39c12' }]}>{selectedUser?.rejected || 0}</Text>
                                 </View>
                             </View>
-
-                            {/* Download Button */}
                             <TouchableOpacity
                                 style={[styles.downloadButton, { backgroundColor: theme.colors.accent, marginVertical: 12 }]}
                                 onPress={handleDownloadUserReport}
@@ -905,8 +907,6 @@ const DashboardScreen = () => {
                                     </>
                                 )}
                             </TouchableOpacity>
-
-                            {/* Close Button */}
                             <Pressable
                                 style={[styles.closeButton, { backgroundColor: theme.colors.primary }]}
                                 onPress={() => setModalVisible(false)}
@@ -918,7 +918,6 @@ const DashboardScreen = () => {
                 </Modal>
             </ScrollView>
 
-            {/* REACT NATIVE PAPER SNACKBAR */}
             <Snackbar
                 visible={downloadInfo.isVisible}
                 onDismiss={onDismissSnackbar}
@@ -971,6 +970,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 4,
         justifyContent: 'space-between',
+        
     },
     nameContainer: {
         flexDirection: 'row',

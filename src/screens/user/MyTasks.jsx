@@ -377,6 +377,7 @@ const TasksScreen = () => {
           <Text style={styles.header}>My Personal Tasks </Text>
 
           <FlatList
+            style={{ marginBottom: 60 }}
             data={tasks}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (

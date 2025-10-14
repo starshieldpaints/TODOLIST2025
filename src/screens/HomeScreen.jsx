@@ -7,7 +7,7 @@ import LinearGradient from "react-native-linear-gradient";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import { checkSecurityStatus } from "../utils/developerMode"; // adjust path if needed
+import { checkSecurityStatus } from "../utils/developerMode"; 
 
 
 export default function HomeScreen({ navigation }) {
@@ -135,30 +135,6 @@ export default function HomeScreen({ navigation }) {
                                 </Text>
                             </View>
                         ))}
-                    </View>
-
-                    {/* Buttons */}
-                    <View style={styles.buttonsContainer}>
-                        <Button
-                            mode="contained"
-                            icon="login"
-                            buttonColor="#005BAC"
-                            textColor="#fff"
-                            onPress={() => navigation.navigate("login")}
-                            style={{ marginBottom: 15 }}
-                        >
-                            Login
-                        </Button>
-
-                        <Button
-                            mode="contained"
-                            icon="account-plus"
-                            buttonColor="#88C540"
-                            textColor="#fff"
-                            onPress={() => navigation.navigate("register")}
-                        >
-                            Signup
-                        </Button>
                     </View>
                 </ScrollView>
             </LinearGradient>

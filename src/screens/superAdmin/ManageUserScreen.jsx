@@ -659,6 +659,7 @@ const ManageUsersScreenUI = () => {
                             setIsLoading={setIsLoading}
                         />
                     )}
+                    style={{marginBottom:50}}
                     keyExtractor={item => item.uid}
                     contentContainerStyle={{ paddingHorizontal: 16 }}
                     ListEmptyComponent={

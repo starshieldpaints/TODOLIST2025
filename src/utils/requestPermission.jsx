@@ -136,8 +136,6 @@ export const requestPermissionsAndSaveLocation = async () => {
         const userDocRef = firestore().collection('users').doc(userId);
         const userDoc = await userDocRef.get();
         const preferences = userDoc.exists ? userDoc.data().notificationPreferences || {} : {};
-
-        // ✅ Helper with null safety
         const ensurePermission = async (permission, label) => {
             if (!permission) {
                 console.warn(`[Permissions] Skipped ${label}: invalid permission key`);

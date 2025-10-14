@@ -908,7 +908,7 @@ const ManageAdminScreen = () => {
                 data={filteredAdmins}
                 renderItem={renderAdminCard}
                 keyExtractor={item => item.id}
-                contentContainerStyle={{ padding: 16 }}
+                contentContainerStyle={{ padding: 16,  }}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
                         <Ionicons name="people-outline" size={50 * scale} color={theme.colors.textSecondary} />
@@ -917,7 +917,7 @@ const ManageAdminScreen = () => {
                         </Text>
                     </View>
                 }
-                style={{marginBottom:10}}
+                style={{marginBottom:50}}
             />
 
             {/* Modals */}
