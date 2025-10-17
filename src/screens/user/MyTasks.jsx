@@ -8,7 +8,7 @@ import auth from '@react-native-firebase/auth';
 import DatePicker from 'react-native-date-picker';
 
 import { useTheme } from '../../hooks/useTheme';
-import TaskItem from './components/TaskItems';
+import TaskItem from './components/TaskItems'; // Assuming TaskItem uses these fonts as well
 
 const formatDate = (date) => {
   return date.toLocaleDateString('en-US', {
@@ -353,7 +353,7 @@ const TasksScreen = () => {
     <PaperProvider theme={paperTheme}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.innerContainer}>
-          <Text style={styles.header}>My Personal Tasks </Text>
+          <Text style={styles.header}>Working Tasks </Text>
 
           <FlatList
             style={{ marginBottom: 60 }}
@@ -377,7 +377,7 @@ const TasksScreen = () => {
           <Icon name="add" size={30} color="#FFFFFF" />
         </TouchableOpacity>
 
-        { }
+        {/* Modal for Create/Edit Task */}
         <Portal>
           <Modal
             visible={modalVisible}
@@ -391,10 +391,13 @@ const TasksScreen = () => {
               value={title}
               onChangeText={setTitle}
               mode="outlined"
-              style={styles.paperInput}
+              style={[styles.paperInput, { fontFamily: 'Poppins' }]}
               activeOutlineColor={theme.colors.border}
               outlineColor={theme.colors.text}
               theme={{ colors: { background: theme.colors.card } }}
+              // Input text uses Poppins (default in Paper, but set here for clarity if needed)
+              inputMode="text"
+              selectionColor={theme.colors.text}
             />
 
             <PaperTextInput
@@ -403,14 +406,14 @@ const TasksScreen = () => {
               onChangeText={setDescription}
               mode="outlined"
               multiline
-              style={styles.paperInput}
+              style={[styles.paperInput, { fontFamily: 'Poppins' }]}
               activeOutlineColor={theme.colors.border}
               outlineColor={theme.colors.text}
               theme={{ colors: { background: theme.colors.card } }}
               textColor={theme.colors.text}
             />
 
-            { }
+            {/* Deadline Picker Button */}
             <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowDatePicker(true)}>
               <Text style={styles.dateLabel}>
                 <Text style={styles.dateValue}>{formatDate(deadline)}</Text>
@@ -418,7 +421,7 @@ const TasksScreen = () => {
               <Icon name="calendar-outline" size={20} color={theme.colors.text} />
             </TouchableOpacity>
 
-            { }
+            {/* Remarks Input */}
             <PaperTextInput
               label={isEditing ? "Add New Remark" : "Initial Remark (Optional)"}
               value={newRemarkText}
@@ -426,13 +429,14 @@ const TasksScreen = () => {
               mode="outlined"
               multiline
               numberOfLines={3}
-              style={[styles.paperInput, styles.remarksInput]}
+              style={[styles.paperInput, styles.remarksInput, { fontFamily: 'Kalam' }]}
               activeOutlineColor={theme.colors.border}
               outlineColor={theme.colors.text}
               theme={{ colors: { background: theme.colors.card } }}
+              textColor={theme.colors.text}
             />
 
-            { }
+            {/* Existing Remarks Display */}
             {isEditing && currentRemarksArray.length > 0 && (
               <View style={styles.existingRemarksContainer}>
                 <Text style={styles.existingRemarksTitle}>Existing Remarks ({currentRemarksArray.length})</Text>
@@ -442,7 +446,7 @@ const TasksScreen = () => {
                   renderItem={({ item, index }) => (
                     <Text
                       key={index}
-                      style={styles.existingRemarkText}
+                      style={[styles.existingRemarkText, { fontFamily: 'Kalam' }]}
                       numberOfLines={1}
                       ellipsizeMode="tail"
                     >
@@ -453,9 +457,8 @@ const TasksScreen = () => {
               </View>
             )}
 
-            { }
+            {/* Reminder Action Button Row (Simplified) */}
             <View style={styles.buttonRowExpanded}>
-              { }
               {reminder && (
                 <TouchableOpacity
                   style={styles.clearReminderButton}
@@ -467,13 +470,13 @@ const TasksScreen = () => {
               )}
             </View>
 
-            { }
+            {/* Action Buttons */}
             <View style={styles.buttonRow}>
               <PaperButton
                 mode="outlined"
                 onPress={closeModal}
                 style={styles.paperButton}
-                labelStyle={{ color: '#999' }}
+                labelStyle={[{ color: '#999', fontFamily: 'Poppins' }]}
                 icon="close-circle-outline"
               >
                 Cancel
@@ -482,9 +485,10 @@ const TasksScreen = () => {
               <PaperButton
                 mode="contained"
                 onPress={isEditing ? handleUpdateTask : handleAddTask}
-                style={[styles.paperButton, { backgroundColor: theme.colors.border }]}
+                style={[styles.paperButton, { backgroundColor: theme.colors.primary }]} // Changed border to primary for contrast
                 icon={isEditing ? "content-save-outline" : "plus-circle-outline"}
-                textColor={theme.colors.text}
+                textColor={'#FFFFFF'} // Assuming primary is dark enough for white text
+                labelStyle={{ fontFamily: 'Poppins' }}
               >
                 {isEditing ? 'Update' : 'Save'}
               </PaperButton>
@@ -492,7 +496,8 @@ const TasksScreen = () => {
           </Modal>
         </Portal>
 
-        { }
+        {/* DatePickers for Deadline and Reminder */}
+        {/* ... (DatePickers remain as they don't directly use custom font styles here) ... */}
         <DatePicker
           modal
           open={showDatePicker}
@@ -510,7 +515,6 @@ const TasksScreen = () => {
           textColor={theme.colors.text}
         />
 
-        { }
         <DatePicker
           modal
           open={showReminderPicker}
@@ -526,7 +530,6 @@ const TasksScreen = () => {
           textColor={theme.colors.text}
         />
 
-        { }
         <DatePicker
           modal
           open={deadlineModalVisible}
@@ -550,38 +553,77 @@ const TasksScreen = () => {
   );
 };
 
+// --- Font Style Application ---
 const createStyles = (theme, paperTheme) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: theme.colors.background, },
   innerContainer: { flex: 1, paddingHorizontal: 18, paddingVertical: 0, },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
-  header: { fontSize: 28, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16, marginTop: 10 },
-  emptyText: { textAlign: 'center', marginTop: 50, color: theme.colors.text, fontSize: 16 },
+
+  // Secular One for main header (strong presence)
+  header: {
+    fontSize: 32, // Increased size for impact
+    fontFamily: 'SecularOne',
+    color: theme.colors.text,
+    marginBottom: 16,
+    marginTop: 10,
+    fontWeight: 'normal', // Secular One is already bold/heavy
+  },
+
+  // Poppins for general informative text
+  emptyText: { textAlign: 'center', marginTop: 50, color: theme.colors.text, fontSize: 16, fontFamily: 'Poppins' },
+
+  // Kalam for FAB (unique/personal touch)
   fab: {
     position: 'absolute', width: 56, height: 56, alignItems: 'center', justifyContent: 'center',
-    right: 20, bottom: 90, backgroundColor: theme.colors.primary, borderRadius: 28, elevation: 8
+    right: 20, bottom: 90, backgroundColor: theme.colors.primary, borderRadius: 28, elevation: 8,
+    // Note: FAB only contains an Icon, but this could be where a 'Kalam' text label would go if you had one.
   },
+
   modalView: {
     width: '90%', maxHeight: '90%', alignSelf: 'center', borderRadius: 12, padding: 20,
     alignItems: 'center', elevation: 10,
   },
-  modalTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 15, color: theme.colors.text },
+
+  // Secular One for modal title (strong distinction)
+  modalTitle: {
+    fontSize: 24,
+    fontFamily: 'SecularOne',
+    marginBottom: 20,
+    color: theme.colors.text,
+    fontWeight: 'normal',
+  },
+
+  // PaperTextInput default text uses Poppins or is styled implicitly
   paperInput: { width: '100%', marginBottom: 15, backgroundColor: theme.colors.card },
+
+  // Poppins for date picker button
   datePickerButton: {
     width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: 15, backgroundColor: theme.dark ? '#333' : '#eee', borderRadius: 8, marginBottom: 15,
   },
-  dateLabel: { color: theme.colors.text, fontSize: 16, fontWeight: '500' },
-  dateValue: { fontWeight: 'bold', fontSize: 16, color: theme.colors.text },
+  dateLabel: { color: theme.colors.text, fontSize: 16, fontFamily: 'Poppins' },
+  dateValue: { fontWeight: 'bold', fontSize: 16, color: theme.colors.text, fontFamily: 'Poppins' },
+
   remarksInput: { minHeight: 80 },
   existingRemarksContainer: {
     width: '100%', marginTop: 5, padding: 10, backgroundColor: theme.dark ? '#222' : '#f0f0f0',
     borderRadius: 8, borderLeftWidth: 3, borderLeftColor: theme.colors.primary, marginBottom: 15, maxHeight: 150,
   },
+
+  // Poppins for remark titles
   existingRemarksTitle: {
     fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginBottom: 5,
     borderBottomWidth: 1, borderBottomColor: theme.dark ? '#333' : '#ddd', paddingBottom: 5,
+    fontFamily: 'Poppins',
   },
-  existingRemarkText: { fontSize: 12, color: theme.dark ? '#bbb' : '#444', marginBottom: 4 },
+
+  // Kalam for remark text (handwritten/note style)
+  existingRemarkText: {
+    fontSize: 14, // Slightly larger for readability
+    color: theme.dark ? '#bbb' : '#444',
+    marginBottom: 4,
+    fontFamily: 'Kalam',
+  },
 
   buttonRowExpanded: { flexDirection: 'row', width: '100%', alignItems: 'center', marginBottom: 15 },
   reminderActionButton: {
@@ -591,6 +633,7 @@ const createStyles = (theme, paperTheme) => StyleSheet.create({
   buttonRow: {
     flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 5,
   },
+  // PaperButton labelStyle is updated inline for Poppins
   paperButton: { flex: 1, marginHorizontal: 5, borderRadius: 8, paddingVertical: 5 }
 });
 

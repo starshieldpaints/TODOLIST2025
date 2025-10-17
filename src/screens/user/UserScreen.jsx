@@ -1,12 +1,8 @@
 import React, { useEffect } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/Ionicons';
 import messaging from '@react-native-firebase/messaging';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
-import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
-import Geolocation from 'react-native-geolocation-service';
 import { useTheme } from '../../hooks/useTheme';
 
 import TasksScreen from './TaskScreen';
@@ -14,7 +10,7 @@ import DashboardScreen from './DashboardScreen';
 import ProfileScreen from './ProfileScreen';
 import { requestPermissionsAndSaveLocation } from "../../utils/requestPermission";
 import MyTask from "./MyTasks";
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 
 const Tab = createBottomTabNavigator();
 

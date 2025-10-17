@@ -59,6 +59,8 @@ const RegisterScreen = () => {
     const [currentStep, setCurrentStep] = useState(1);
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
+    // 💡 ADDED: State for phone number
+    const [phoneNumber, setPhoneNumber] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [addressLine, setAddressLine] = useState('');
@@ -87,7 +89,8 @@ const RegisterScreen = () => {
             }
             setLoadingCountries(true);
             try {
-                const response = await fetch(`http://api.geonames.org/countryInfoJSON?username=${GEONAMES_USER}`);
+                // 🌍 FIX 1: Use HTTPS secure endpoint for country info
+                const response = await fetch(`https://secure.geonames.org/countryInfoJSON?username=${GEONAMES_USER}`);
                 const data = await response.json();
                 if (data.geonames) {
                     const formattedCountries = data.geonames.map(c => ({ name: c.countryName, geonameId: c.geonameId }));
@@ -109,7 +112,8 @@ const RegisterScreen = () => {
                 setLoadingStates(true);
                 setStates([]); setCities([]); setSelectedState(null); setSelectedCity(null);
                 try {
-                    const response = await fetch(`http://api.geonames.org/childrenJSON?geonameId=${selectedCountry.geonameId}&username=${GEONAMES_USER}`);
+                    // 🌍 FIX 2: Use HTTPS secure endpoint for states/regions
+                    const response = await fetch(`https://secure.geonames.org/childrenJSON?geonameId=${selectedCountry.geonameId}&username=${GEONAMES_USER}`);
                     const data = await response.json();
                     if (data.geonames) {
                         const formattedStates = data.geonames.map(s => ({ name: s.name, geonameId: s.geonameId }));
@@ -128,7 +132,8 @@ const RegisterScreen = () => {
                 setLoadingCities(true);
                 setCities([]); setSelectedCity(null);
                 try {
-                    const response = await fetch(`http://api.geonames.org/childrenJSON?geonameId=${selectedState.geonameId}&username=${GEONAMES_USER}`);
+                    // 🌍 FIX 3: Use HTTPS secure endpoint for cities
+                    const response = await fetch(`https://secure.geonames.org/childrenJSON?geonameId=${selectedState.geonameId}&username=${GEONAMES_USER}`);
                     const data = await response.json();
                     if (data.geonames) {
                         const formattedCities = data.geonames.map(c => ({ name: c.name, geonameId: c.geonameId }));
@@ -170,11 +175,16 @@ const RegisterScreen = () => {
     );
 
     const handleContinueToStep2 = () => {
-        if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+        // 💡 UPDATED: Added phoneNumber validation
+        if (!name.trim() || !email.trim() || !phoneNumber.trim() || !password.trim() || !confirmPassword.trim()) {
             return Alert.alert('Error', 'All basic fields are required');
         }
         if (!/\S+@\S+\.\S+/.test(email)) {
             return Alert.alert('Invalid Email', 'Please enter a valid email address');
+        }
+        // Basic phone number validation (can be enhanced)
+        if (!/^\+?[0-9\s-]{7,15}$/.test(phoneNumber.trim())) {
+            return Alert.alert('Invalid Phone Number', 'Please enter a valid phone number (7-15 digits, optional +).');
         }
         if (password.length < 6) {
             return Alert.alert('Invalid Password', 'Password must be at least 6 characters');
@@ -201,10 +211,13 @@ const RegisterScreen = () => {
             const userCredential = await auth().createUserWithEmailAndPassword(email, password);
             const uid = userCredential.user.uid;
             const trimmedDepartment = department.trim();
+
+            // 💡 UPDATED: Added phoneNumber to the Firestore document
             await firestore().collection('users').doc(uid).set({
                 uid,
                 email: email.trim(),
                 name: name.trim(),
+                phoneNumber: phoneNumber.trim(), // 👈 ADDED HERE
                 role: 'user',
                 department: trimmedDepartment,
                 notificationPreferences: { push: false, email: false },
@@ -244,6 +257,17 @@ const RegisterScreen = () => {
                     <Text variant="titleLarge" style={styles.stepTitle}>Basic Details</Text>
                     <TextInput label="Full Name" value={name} onChangeText={setName} mode="outlined" style={styles.input} />
                     <TextInput label="Email" value={email} onChangeText={setEmail} mode="outlined" keyboardType="email-address" autoCapitalize="none" style={styles.input} />
+                    {/* 💡 ADDED: Phone number input field */}
+                    <TextInput
+                        label="Phone Number"
+                        value={phoneNumber}
+                        onChangeText={setPhoneNumber}
+                        mode="outlined"
+                        keyboardType="phone-pad"
+                        style={styles.input}
+                        // Suggesting a placeholder for clarity on format
+                        placeholder="+91 "
+                    />
                     <TextInput label="Password" value={password} onChangeText={setPassword} mode="outlined" secureTextEntry={!showPassword} style={styles.input} right={<TextInput.Icon icon={showPassword ? 'eye-off' : 'eye'} onPress={() => setShowPassword(p => !p)} />} />
                     <TextInput label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} mode="outlined" secureTextEntry={!showConfirmPassword} style={styles.input} right={<TextInput.Icon icon={showConfirmPassword ? 'eye-off' : 'eye'} onPress={() => setShowConfirmPassword(p => !p)} />} />
                     <Button mode="contained" onPress={handleContinueToStep2} style={styles.button} contentStyle={styles.buttonContent}>

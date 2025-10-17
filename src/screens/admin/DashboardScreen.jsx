@@ -638,9 +638,6 @@ const DashboardScreen = () => {
                     ))}
                 </View>
 
-                { }
-                { }
-                { }
                 <Text style={[styles.sectionTitle, { fontSize: 18 * scale, color: theme.colors.text, marginTop: 10, marginBottom: 5 }]}>Task Analytics (Health & Risk)</Text>
 
                 { }
@@ -1234,7 +1231,7 @@ const requestStyles = StyleSheet.create({
         shadowRadius: 4,
     },
     requestsModalContainerWithIcon: {
-        width: '90%',
+        width: '100%',
         maxHeight: '80%',
         borderRadius: 12,
         padding: 16,
