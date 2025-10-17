@@ -108,14 +108,7 @@ const AdminTabs = () => {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.text,
-        // tabBarStyle: {
-        //   backgroundColor: theme.colors.card,
-        //   borderTopWidth: 0,
-        //   elevation: 6,
-        //   height: 80,
-        //   paddingTop:0,
-  
-        // },
+
 
         tabBarStyle: {
           backgroundColor: theme.colors.card,

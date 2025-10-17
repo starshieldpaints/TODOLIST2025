@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useCallback } from 'react'; // 1. ADD useCallback
+import React, { useContext, useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -21,30 +21,22 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { ThemeContext } from '../../context/ThemeContext';
 import DatePicker from 'react-native-date-picker';
-// 🌟 NEW: IMPORT useFocusEffect FOR RE-FETCH ON TAB CHANGE 🌟
 import { useFocusEffect } from '@react-navigation/native';
 
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
-// ----------------------------------------------------------------------
-
-
-// --- Utilities (Simplified) ---
+import ViewUserTasksModal from "./components/ViewUserTasksModal"
 const useScreenWidth = () => {
     const screenWidth = Dimensions.get('window').width;
     return screenWidth;
 };
-
-// ... (Your handleMakeAdmin function remains the same) ...
 const handleMakeAdmin = async (userToPromote, setUsers, setAdmins, setIsLoading, handleDismiss) => {
 
-    // 1. Pre-Check for valid user
     if (!userToPromote || userToPromote.role?.toLowerCase() !== 'user') {
         Alert.alert("Error", "Invalid user selected for promotion, or user is already an admin.");
         return;
     }
 
-    // 2. Confirmation Alert
     Alert.alert(
         'Confirm Promotion',
         `Are you sure you want to promote ${userToPromote.name} to Admin?`,
@@ -57,30 +49,24 @@ const handleMakeAdmin = async (userToPromote, setUsers, setAdmins, setIsLoading,
                     setIsLoading(true);
                     try {
 
-                        // 3. Update the user's role in Firestore
                         await firestore().collection('users').doc(userToPromote.uid).update({
                             role: 'admin',
-                            // It's good practice to clear adminId if present, as they are now an Admin themselves
+
                             adminId: null
                         });
 
-                        // 4. Update local state
-
-                        // a. Remove the user from the regular 'users' list
                         setUsers(prevUsers => prevUsers.filter(u => u.uid !== userToPromote.uid));
 
-                        // b. Add the user to the local 'admins' list
                         setAdmins(prevAdmins => [
                             ...prevAdmins,
                             { ...userToPromote, role: 'admin', adminId: null }
                         ]);
 
-                        // 5. Success Feedback and cleanup
                         Alert.alert('Success', `${userToPromote.name} is now an administrator! 🎉`);
-                        handleDismiss(); // Close the admin options modal
+                        handleDismiss();
 
                     } catch (error) {
-                        // 6. Error Handling
+
                         console.error("Error promoting user to admin:", error);
                         Alert.alert('Error', 'Failed to update user role. Check Firebase permissions.');
                     } finally {
@@ -91,9 +77,9 @@ const handleMakeAdmin = async (userToPromote, setUsers, setAdmins, setIsLoading,
         ]
     );
 };
-// ... (Your ActionButton component remains the same) ...
+
 const ActionButton = ({ icon, label, onPress, color = 'blue', disabled = false, screenWidth, theme }) => (
-    // ... (logic remains the same) ...
+
     <Pressable
         onPress={disabled ? null : onPress}
         disabled={disabled}
@@ -123,7 +109,6 @@ const ActionButton = ({ icon, label, onPress, color = 'blue', disabled = false, 
     </Pressable>
 );
 
-// ... (Your AdminPickerModal component remains the same) ...
 const AdminPickerModal = ({
     isVisible,
     onDismiss,
@@ -134,7 +119,7 @@ const AdminPickerModal = ({
     setIsLoading,
     currentAdminId
 }) => {
-    // ... (logic remains the same) ...
+
     const handleAdminSelection = async (newAdmin) => {
         if (newAdmin.uid === currentAdminId) {
             Alert.alert("No Change", `${newAdmin.name} is already the assigned admin.`);
@@ -144,22 +129,20 @@ const AdminPickerModal = ({
 
         setIsLoading(true);
         try {
-            // 1. Update the user's adminId field in Firestore
-            // The currentUser object in the modal props represents the user whose admin is being set.
+
             await firestore().collection('users').doc(currentUser.uid).update({
                 adminId: newAdmin.uid
             });
 
-            // 2. Update local React state (`users`)
             setUsers(prevUsers =>
                 prevUsers.map(u =>
-                    // Find the user and update their adminId locally
+
                     u.uid === currentUser.uid ? { ...u, adminId: newAdmin.uid } : u
                 )
             );
 
             Alert.alert('Success', `Admin for ${currentUser.name} successfully changed to ${newAdmin.name}.`);
-            onDismiss(); // Close the modal
+            onDismiss();
         } catch (error) {
             console.error("Error changing admin:", error);
             Alert.alert('Error', 'Failed to change admin. Please try again.');
@@ -169,7 +152,7 @@ const AdminPickerModal = ({
     };
 
     const renderAdminItem = ({ item }) => (
-        // ... (logic remains the same) ...
+
         <Pressable
             onPress={() => handleAdminSelection(item)}
             style={({ pressed }) => [
@@ -233,12 +216,20 @@ const AdminPickerModal = ({
         </Portal>
     );
 };
-// ------------------------------------------------------------------
 
-
-// ... (Your UserCardDisplay component remains the same) ...
-const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskModalData, openAdminOptionsModal, openChangeAdminModal, setSelectedUserForAdminAction, setIsLoading }) => {
-    // ... (logic remains the same) ...
+const UserCardDisplay = ({
+    item,
+    theme,
+    screenWidth,
+    admins,
+    setUsers,
+    setTaskModalData,
+    openAdminOptionsModal,
+    openChangeAdminModal,
+    setSelectedUserForAdminAction,
+    setIsLoading,
+    openViewTasksModal, // ✅ receives from parent
+}) => {
     const scale = screenWidth / 375;
     const iconSize = 14 * scale;
 
@@ -246,9 +237,14 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
     const assignedAdminName = assignedAdmin ? assignedAdmin.name : 'No Admin';
     const isAssigned = !!item.adminId;
 
-    const adminContactIcon = assignedAdmin?.email ? "mail-outline" : assignedAdmin?.phone ? "call-outline" : "alert-circle-outline";
+    const adminContactIcon = assignedAdmin?.email
+        ? "mail-outline"
+        : assignedAdmin?.phone
+            ? "call-outline"
+            : "alert-circle-outline";
     const adminContactText = assignedAdmin?.email || assignedAdmin?.phone || "No contact info";
-    const adminContactColor = assignedAdmin?.email || assignedAdmin?.phone ? theme.colors.primary : theme.colors.text; // Using theme primary
+    const adminContactColor =
+        assignedAdmin?.email || assignedAdmin?.phone ? theme.colors.primary : theme.colors.text;
 
     const handleAssignTask = () => {
         setTaskModalData({ isVisible: true, user: item });
@@ -285,7 +281,7 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
                         } finally {
                             setIsLoading(false);
                         }
-                    }
+                    },
                 },
             ]
         );
@@ -293,11 +289,11 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
 
     const adminActionLabel = isAssigned ? "Options" : "Assign";
     const adminActionIcon = isAssigned ? "people-outline" : "person-add-outline";
-    const userId = item.uid || item.id;
 
     return (
         <View style={{ marginBottom: 16 }}>
             <Pressable
+                onPress={() => openViewTasksModal(item)} // ✅ Corrected reference
                 style={[
                     styles.userCard,
                     {
@@ -307,15 +303,46 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
                         borderRadius: 12 * scale,
                         borderBottomLeftRadius: 0,
                         borderBottomRightRadius: 0,
-                    }
+                    },
                 ]}
             >
                 <View style={styles.cardHeader}>
-                    <Text style={[styles.userName, { color: theme.colors.text, fontSize: 16 * scale }]}>
+                    <Text
+                        style={[
+                            styles.userName,
+                            { color: theme.colors.text, fontSize: 16 * scale },
+                        ]}
+                    >
                         {item.name || 'Unknown User'}
                     </Text>
-                    <View style={[styles.roleBadge, { backgroundColor: theme.colors.primary }]}>
-                        <Text style={styles.roleText}>{item.role || 'user'}</Text>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Pressable
+                            onPress={() => openViewTasksModal(item)} // ✅ fixed duplicate call
+                            style={[
+                                styles.viewTasksButton,
+                                {
+                                    backgroundColor: theme.colors.background + '22',
+                                    borderColor: theme.colors.border,
+                                },
+                            ]}
+                        >
+                            <Ionicons
+                                name="eye-outline"
+                                size={14 * scale}
+                                color={theme.colors.border}
+                            />
+                            <Text
+                                style={[
+                                    styles.viewTasksText,
+                                    { color: theme.colors.text },
+                                ]}
+                            >
+                                View Tasks
+                            </Text>
+                        </Pressable>
+
+                       
                     </View>
                 </View>
 
@@ -329,31 +356,93 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
                     <Text
                         style={[
                             styles.userContactText,
-                            { color: theme.colors.text, fontSize: iconSize, opacity: 0.7 }
+                            {
+                                color: theme.colors.text,
+                                fontSize: iconSize,
+                                opacity: 0.7,
+                            },
                         ]}
                     >
                         {item.email || item.phone || 'Email Not Found'}
                     </Text>
                 </View>
 
-                <View style={[styles.infoRow, { borderTopColor: theme.dark ? theme.colors.border + '66' : theme.colors.border, flexDirection: 'column' }]}>
-                    <View style={[styles.infoPill, { backgroundColor: theme.dark ? theme.colors.background : theme.colors.background, marginBottom: 8 }]}>
-                        <Ionicons name="person-circle-outline" size={iconSize} color={theme.colors.primary} />
-                        <Text style={[styles.infoText, { color: theme.colors.text, fontSize: 13 * scale }]}>
-                            <Text style={{ fontWeight: 'bold' }}>Admin:</Text> {assignedAdminName}
+                <View
+                    style={[
+                        styles.infoRow,
+                        {
+                            borderTopColor: theme.dark
+                                ? theme.colors.border + '66'
+                                : theme.colors.border,
+                            flexDirection: 'column',
+                        },
+                    ]}
+                >
+                    <View
+                        style={[
+                            styles.infoPill,
+                            {
+                                backgroundColor: theme.colors.background,
+                                marginBottom: 8,
+                            },
+                        ]}
+                    >
+                        <Ionicons
+                            name="person-circle-outline"
+                            size={iconSize}
+                            color={theme.colors.primary}
+                        />
+                        <Text
+                            style={[
+                                styles.infoText,
+                                { color: theme.colors.text, fontSize: 13 * scale },
+                            ]}
+                        >
+                            <Text style={{ fontWeight: 'bold' }}>Admin:</Text>{' '}
+                            {assignedAdminName}
                         </Text>
                     </View>
 
-                    <View style={[styles.infoPill, { backgroundColor: theme.dark ? theme.colors.background : theme.colors.background }]}>
-                        <Ionicons name={adminContactIcon} size={iconSize} color={adminContactColor} />
-                        <Text style={[styles.infoText, { color: theme.colors.text, fontSize: 13 * scale, fontStyle: adminContactText === "No contact info" ? 'italic' : 'normal' }]}>
-                            <Text style={{ fontWeight: 'bold' }}>Contact:</Text> {adminContactText}
+                    <View
+                        style={[
+                            styles.infoPill,
+                            { backgroundColor: theme.colors.background },
+                        ]}
+                    >
+                        <Ionicons
+                            name={adminContactIcon}
+                            size={iconSize}
+                            color={adminContactColor}
+                        />
+                        <Text
+                            style={[
+                                styles.infoText,
+                                {
+                                    color: theme.colors.text,
+                                    fontSize: 13 * scale,
+                                    fontStyle:
+                                        adminContactText === 'No contact info'
+                                            ? 'italic'
+                                            : 'normal',
+                                },
+                            ]}
+                        >
+                            <Text style={{ fontWeight: 'bold' }}>Contact:</Text>{' '}
+                            {adminContactText}
                         </Text>
                     </View>
                 </View>
             </Pressable>
 
-            <View style={[styles.actionRow, { backgroundColor: theme.colors.card, borderTopColor: theme.colors.border }]}>
+            <View
+                style={[
+                    styles.actionRow,
+                    {
+                        backgroundColor: theme.colors.card,
+                        borderTopColor: theme.colors.border,
+                    },
+                ]}
+            >
                 <ActionButton
                     icon="briefcase-outline"
                     label="ADD Task"
@@ -385,22 +474,23 @@ const UserCardDisplay = ({ item, theme, screenWidth, admins, setUsers, setTaskMo
     );
 };
 
-// --- Main Screen Component (UI wrapper) ---
+
 const ManageUsersScreenUI = () => {
     const { theme } = useContext(ThemeContext);
     const screenWidth = useScreenWidth();
     const scale = screenWidth / 375;
+    const [viewTasksModal, setViewTasksModal] = useState({
+        isVisible: false,
+        user: null,
+    });
 
-    // --- AUTH STATE ---
     const [currentUserId, setCurrentUserId] = useState(null);
 
-    // --- DATA STATE MANAGEMENT ---
     const [isLoading, setIsLoading] = useState(true);
     const [users, setUsers] = useState([]);
     const [admins, setAdmins] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // --- TASK MODAL STATE ---
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [taskModalData, setTaskModalData] = useState({
         isVisible: false,
@@ -412,17 +502,11 @@ const ManageUsersScreenUI = () => {
     initialDeadline.setDate(initialDeadline.getDate() + 1);
     const [taskDeadline, setTaskDeadline] = useState(initialDeadline);
     const [datePickerVisible, setDatePickerVisible] = useState(false);
-    // -------------------------
 
-    // 🌟 ADMIN MODAL STATE 🌟
     const [selectedUserForAdminAction, setSelectedUserForAdminAction] = useState(null);
     const [adminOptionsModalVisible, setAdminOptionsModalVisible] = useState(false);
     const [changeAdminModalVisible, setChangeAdminModalVisible] = useState(false);
-    // -------------------------
 
-    // ----------------------------------------------------------------------
-    // ## REFACTOR: Data Fetching into a stable, cached function
-    // ----------------------------------------------------------------------
     const fetchUsersData = useCallback(async () => {
         setIsLoading(true);
         try {
@@ -459,31 +543,23 @@ const ManageUsersScreenUI = () => {
         } finally {
             setIsLoading(false);
         }
-    }, []); // Empty dependency array means this function reference is stable
+    }, []);
 
-    // ----------------------------------------------------------------------
-    // ## NEW: useFocusEffect for Re-fetching on Tab Change
-    // ----------------------------------------------------------------------
     useFocusEffect(
         useCallback(() => {
             fetchUsersData();
 
-            // Return a cleanup function (optional)
             return () => {
-                // E.g., cancel subscriptions or clear state if necessary
+
             };
         }, [fetchUsersData])
     );
-    // ----------------------------------------------------------------------
 
-
-    // Filter based on search term (remains the same)
     const filteredUsers = users.filter(user =>
         (user.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         (user.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
-    // ... (Your Modal Handlers remain the same: onConfirmDeadline, onCancelDeadline, showPicker, handleModalSubmit, handleModalDismiss) ...
     const onConfirmDeadline = (date) => {
         setDatePickerVisible(false);
         if (date > new Date()) {
@@ -503,7 +579,6 @@ const ManageUsersScreenUI = () => {
             setDatePickerVisible(true);
         }
     };
-
 
     const handleModalSubmit = async () => {
         if (!taskTitle || !taskDescription || !taskModalData.user) {
@@ -542,7 +617,7 @@ const ManageUsersScreenUI = () => {
 
             Alert.alert("Success", `Task assigned to ${taskModalData.user.name}! (Doc ID: ${docRef.id})`);
             handleModalDismiss();
-            // Optionally re-fetch data to update any task-related stats
+
             await fetchUsersData();
 
         } catch (error) {
@@ -558,9 +633,8 @@ const ManageUsersScreenUI = () => {
         setTaskDescription('');
         setTaskDeadline(initialDeadline);
         setTaskModalData({ isVisible: false, user: null });
-        setDatePickerVisible(false); // Reset picker state
+        setDatePickerVisible(false);
     };
-
 
     const handleAdminOptionsDismiss = () => {
         setAdminOptionsModalVisible(false);
@@ -594,7 +668,7 @@ const ManageUsersScreenUI = () => {
                             setIsLoading(true);
                             try {
                                 await firestore().collection('users').doc(userItem.uid).update({ adminId: null });
-                                // Call fetchUsersData to update the list and associated admin/user data
+
                                 await fetchUsersData();
                                 Alert.alert('Success', `Admin successfully removed for ${userItem.name}.`);
                             } catch (error) {
@@ -614,7 +688,6 @@ const ManageUsersScreenUI = () => {
     const handleAdminPickerDismiss = () => {
         setChangeAdminModalVisible(false);
     };
-
 
     if (isLoading) {
         return (
@@ -657,9 +730,10 @@ const ManageUsersScreenUI = () => {
                             openChangeAdminModal={handleChangeAdminClick}
                             setSelectedUserForAdminAction={setSelectedUserForAdminAction}
                             setIsLoading={setIsLoading}
+                            openViewTasksModal={(user) => setViewTasksModal({ isVisible: true, user })}
                         />
                     )}
-                    style={{marginBottom:50}}
+                    style={{ marginBottom: 50 }}
                     keyExtractor={item => item.uid}
                     contentContainerStyle={{ paddingHorizontal: 16 }}
                     ListEmptyComponent={
@@ -670,7 +744,7 @@ const ManageUsersScreenUI = () => {
                             </Text>
                         </View>
                     }
-                    
+
                 />
             </SafeAreaView>
 
@@ -716,7 +790,6 @@ const ManageUsersScreenUI = () => {
                             </Text>
                         </Pressable>
 
-
                         <DatePicker
                             modal
                             open={datePickerVisible}
@@ -727,7 +800,6 @@ const ManageUsersScreenUI = () => {
                             onCancel={onCancelDeadline}
                             theme={theme.dark ? 'dark' : 'light'}
                         />
-
 
                         <View style={styles.modalButtonRow}>
                             <Pressable
@@ -753,7 +825,7 @@ const ManageUsersScreenUI = () => {
                 )}
             </Modal>
 
-            {/* 🌟 1. ADMIN OPTIONS MODAL 🌟 */}
+            { }
             <Portal>
                 <Modal
                     visible={adminOptionsModalVisible && !!selectedUserForAdminAction}
@@ -772,7 +844,7 @@ const ManageUsersScreenUI = () => {
                             <Ionicons name="person-remove-outline" size={24} color={theme.colors.notification} />
                             <Text style={[styles.adminModalOptionText, { color: theme.colors.notification }]}>Remove Admin</Text>
                         </Pressable>
-                        <Pressable style={styles.adminModalOptionButton} onPress={()=>handleMakeAdmin(selectedUserForAdminAction,setUsers,setAdmins,setIsLoading,handleAdminOptionsDismiss)}>
+                        <Pressable style={styles.adminModalOptionButton} onPress={() => handleMakeAdmin(selectedUserForAdminAction, setUsers, setAdmins, setIsLoading, handleAdminOptionsDismiss)}>
                             <Ionicons name="person-add-outline" size={24} color={theme.colors.notification} />
                             <Text style={[styles.adminModalOptionText, { color: theme.colors.notification }]}>Make Admin</Text>
                         </Pressable>
@@ -780,24 +852,27 @@ const ManageUsersScreenUI = () => {
                 </Modal>
             </Portal>
 
-
             <AdminPickerModal
                 isVisible={changeAdminModalVisible && !!selectedUserForAdminAction}
                 onDismiss={handleAdminPickerDismiss}
-                admins={admins.filter(a => a.uid !== selectedUserForAdminAction?.uid)} // Don't allow user to assign themselves as admin
+                admins={admins.filter(a => a.uid !== selectedUserForAdminAction?.uid)}
                 currentUser={selectedUserForAdminAction}
                 theme={theme}
                 setUsers={setUsers}
                 setIsLoading={setIsLoading}
                 currentAdminId={selectedUserForAdminAction?.adminId}
             />
+            <ViewUserTasksModal
+                isVisible={viewTasksModal.isVisible}
+                onDismiss={() => setViewTasksModal({ isVisible: false, user: null })}
+                user={viewTasksModal.user}
+                theme={theme}
+            />
 
         </Portal.Host>
     );
 };
 
-
-// ... (Your Stylesheet remains the same) ...
 const styles = StyleSheet.create({
     loadingContainer: {
         flex: 1,
@@ -827,6 +902,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 8,
     },
+    viewTasksButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 10,
+        borderWidth: 1,
+    },
+    viewTasksText: {
+        fontSize: 10,
+        fontWeight: '600',
+        marginLeft: 4,
+    },
+
     userName: {
         fontWeight: '900',
         flexShrink: 1,
@@ -893,7 +982,7 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         borderRadius: 20,
         borderWidth: 1,
-        // width calculated in the component
+
     },
     actionButtonText: {
         fontWeight: '700',
@@ -957,7 +1046,7 @@ const styles = StyleSheet.create({
     },
     modalButtonCancel: {
         marginRight: 10,
-        backgroundColor: '#7f8c8d', // Default fallback
+        backgroundColor: '#7f8c8d',
     },
     modalButtonSubmit: {
         marginLeft: 10,
@@ -993,8 +1082,3 @@ const styles = StyleSheet.create({
 });
 
 export default ManageUsersScreenUI;
-
-
-
-
-

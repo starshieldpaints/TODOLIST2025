@@ -271,10 +271,7 @@ exports.sendPersonalTaskReminders = onSchedule(
       const now = admin.firestore.Timestamp.now();
       const fifteenMinutesFromNow = new Date(now.toDate().getTime() + REMINDER_CHECK_INTERVAL_MS);
       const reminderTimestampEnd = admin.firestore.Timestamp.fromDate(fifteenMinutesFromNow);
-
       console.log(`Checking ALL user documents for personal task reminders between ${now.toDate()} and ${reminderTimestampEnd.toDate()}`);
-
-      // 1. Fetch ALL user documents
       const usersSnapshot = await firestore.collection("users").get();
       const notificationPromises = [];
 

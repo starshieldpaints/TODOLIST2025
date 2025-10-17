@@ -122,8 +122,7 @@ const LoginScreen = () => {
                     contentStyle={styles.buttonContent}
                     disabled={loading}
                 >
-                    {/* {loading ? <ActivityIndicator color="#fff" /> : 'Login'}
-                     */}
+                    
 
                      Login
                 </Button>
@@ -169,7 +168,7 @@ const LoginScreen = () => {
         </KeyboardAvoidingView>
     );
 };
-// ---
+
 const styles = StyleSheet.create({
     fullScreen: { flex: 1 },
     container: { flexGrow: 1, justifyContent: 'center', padding: 24 },

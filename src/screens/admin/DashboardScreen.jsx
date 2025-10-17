@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useContext } from 'react';
 import { View, Text, ScrollView, StyleSheet, Dimensions, Modal, TouchableOpacity, Pressable, Alert, Image, ActivityIndicator, Platform, FlatList } from 'react-native';
 import { Card, Snackbar } from 'react-native-paper';
@@ -8,32 +7,21 @@ import auth from '@react-native-firebase/auth';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemeContext } from '../../context/ThemeContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-
-// --- PDF GENERATION IMPORTS (Requires pdf-lib, react-native-fs, and buffer) ---
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import RNFS from 'react-native-fs';
 import { Buffer } from 'buffer';
-// ------------------------------
 
-// Constants for responsiveness
 const screenWidth = Dimensions.get('window').width;
-const PADDING_HORIZONTAL = 32; // 16px padding on each side
+const PADDING_HORIZONTAL = 32;
 const PIE_CHART_WIDTH = screenWidth - PADDING_HORIZONTAL;
-// Ensures a minimum width of 400 for bar/line charts for readability, enabling horizontal scroll if screen is smaller.
 const CHART_WIDTH = Math.max(screenWidth - PADDING_HORIZONTAL, 400);
 
-// Utility functions
 const safeDate = (timestamp) => {
     return (timestamp?.toDate?.() || new Date(timestamp || Date.now()));
 };
 
 const hoursBetween = (start, end) => (end - start) / 1000 / 3600;
 const daysBetween = (start, end) => (end - start) / 1000 / 3600 / 24;
-
-
-// -----------------------------------------------------------------
-// 🛠️ PDF GENERATION FUNCTIONS (Unchanged - assumes these functions are complete)
-// -----------------------------------------------------------------
 
 const generateOverallPdfContent = async (data) => {
     const { tasks, tasksPerUser } = data;
@@ -77,8 +65,7 @@ const generateOverallPdfContent = async (data) => {
     const topPerformer = rankedUsers[0];
     const bottomPerformer = rankedUsers.length > 0 ? rankedUsers[rankedUsers.length - 1] : null;
 
-    // 1. Header and Title
-    page.drawText('Task Management System - Overall Performance Report', {
+    page.drawText('TaskManager - Overall Performance Report', {
         x: margin, y: y, size: 22, font: fontBold, color: rgb(0.18, 0.31, 0.43)
     });
     y -= 30;
@@ -87,8 +74,6 @@ const generateOverallPdfContent = async (data) => {
     });
     y -= 40;
 
-
-    // 2. Core Operational KPIs - 4 Boxes
     page.drawText('Core Operational KPIs', { x: margin, y: y, size: 16, font: fontBold });
     y -= 25;
 
@@ -123,7 +108,6 @@ const generateOverallPdfContent = async (data) => {
     });
     y -= (kpiBoxHeight + 35);
 
-    // 3. Deeper Analysis (Completion, Aging, Productivity)
     if (y < margin + 180) {
         page = pdfDoc.addPage();
         y = height - 50;
@@ -167,7 +151,6 @@ const generateOverallPdfContent = async (data) => {
 
     y -= 100;
 
-    // 4. User Performance Table Header
     y -= 40;
     if (y < margin + 100) {
         page = pdfDoc.addPage();
@@ -188,7 +171,6 @@ const generateOverallPdfContent = async (data) => {
     });
     y -= 25;
 
-    // 5. Performance Table Rows
     tasksPerUser.forEach(user => {
         if (y < margin + 20) {
             page = pdfDoc.addPage();
@@ -238,7 +220,6 @@ const generateUserPdfContent = async (user) => {
     const userOnTimeRate = user.completed > 0 ? (user.completedOnTime / user.completed) * 100 : 0;
     const userRejectionRate = totalAssigned > 0 ? (user.rejected / totalAssigned) * 100 : 0;
 
-
     page.drawText(`Individual Performance Report: ${user.name}`, { x: margin, y: y, size: 24, font: fontBold, color: rgb(0.18, 0.31, 0.43) });
     y -= 40;
 
@@ -267,6 +248,32 @@ const generateUserPdfContent = async (user) => {
 
     return pdfDoc.save();
 };
+
+const updateRequestStatus = async (userId, requestId, newStatus, setAllRequests) => {
+    try {
+        const userRef = firestore().collection('users').doc(userId);
+        const doc = await userRef.get();
+
+        if (!doc.exists) return;
+
+        const userRequests = doc.data().userRequests || [];
+
+        const updatedRequests = userRequests.map(r =>
+            r.requestId === requestId ? { ...r, status: newStatus } : r
+        );
+
+        await userRef.update({ userRequests: updatedRequests });
+
+        setAllRequests(prev =>
+            prev.filter(r => !(r.requestId === requestId && newStatus === 'fulfilled'))
+                .map(r => (r.requestId === requestId ? { ...r, status: newStatus } : r))
+        );
+    } catch (error) {
+        Alert.alert('Error', 'Failed to update request status.');
+        console.error(error);
+    }
+};
+
 const UserPerformanceCard = ({ user, theme, scale, onPress }) => {
     const { name, profilePicUrl } = user;
     return (
@@ -307,10 +314,13 @@ const DashboardScreen = () => {
     const [isDownloading, setIsDownloading] = useState(false);
     const [downloadInfo, setDownloadInfo] = useState({ isVisible: false, fileName: '' });
 
+    const [requestsModalVisible, setRequestsModalVisible] = useState(false);
+    const [allRequests, setAllRequests] = useState([]);
+    const [loadingRequests, setLoadingRequests] = useState(false);
+
     const currentAdminId = auth().currentUser?.uid;
     const now = new Date();
 
-    // Fetch users and tasks from Firestore 
     useEffect(() => {
         if (!currentAdminId) return;
 
@@ -331,7 +341,55 @@ const DashboardScreen = () => {
         };
     }, [currentAdminId]);
 
-    // --- ANALYTICS CALCULATIONS ---
+    useEffect(() => {
+        if (!requestsModalVisible || !currentAdminId) return;
+        setLoadingRequests(true);
+
+        const unsubscribe = firestore()
+            .collection('users')
+
+            .where('adminId', '==', currentAdminId)
+            .onSnapshot(snapshot => {
+                const userInfoMap = {};
+                const requests = [];
+
+                snapshot.forEach(doc => {
+                    const userData = doc.data();
+                    const userId = doc.id;
+
+                    userInfoMap[userId] = {
+                        name: userData.name || 'Unnamed',
+                        contact: userData.phone || userData.email || 'N/A',
+                        role: userData.role || 'Unknown',
+                    };
+
+                    (userData.userRequests || []).forEach(req => {
+
+                        if (
+                            req.recipientRole === 'admin' &&
+                            (req.status === 'new' || req.status === 'pending')
+                        ) {
+                            requests.push({
+                                ...req,
+                                userId,
+                                requesterName: userInfoMap[userId].name,
+                                requesterContact: userInfoMap[userId].contact,
+                                requesterRole: userInfoMap[userId].role,
+                            });
+                        }
+                    });
+
+                });
+
+                setAllRequests(requests);
+                setLoadingRequests(false);
+            });
+
+        return () => unsubscribe();
+    }, [requestsModalVisible, currentAdminId]);
+
+    const newRequestCount = allRequests.filter(r => r.status === 'new').length;
+
     const todoTasksCount = tasks.filter(t => t.status === 'todo' || t.status === 'pending').length;
     const completedTasksCount = tasks.filter(t => t.status === 'completed').length;
     const inProgressTasksCount = tasks.filter(t => t.status === 'inprogress').length;
@@ -342,7 +400,6 @@ const DashboardScreen = () => {
         return deadline < now && t.status !== 'completed';
     });
 
-    // Merge task data with user data for dashboard metrics
     const tasksPerUser = users.map(u => {
         const userTasks = tasks.filter(t => t.assignedTo === u.uid);
         const userCompleted = userTasks.filter(t => t.status === 'completed').length;
@@ -383,11 +440,6 @@ const DashboardScreen = () => {
         };
     });
 
-    // ---------------------------------------------
-    // 📊 CHART DATA PREPARATION FUNCTIONS (8 Charts Total)
-    // ---------------------------------------------
-
-    // 1. Task Status Breakdown (Pie Chart)
     const pieChartData = [
         { name: 'Completed', population: completedTasksCount, color: '#2ecc71', legendFontColor: theme.colors.text, legendFontSize: 12 },
         { name: 'In Progress', population: inProgressTasksCount, color: '#f39c12', legendFontColor: theme.colors.text, legendFontSize: 12 },
@@ -396,7 +448,6 @@ const DashboardScreen = () => {
         { name: 'Overdue', population: overdueTasksList.length, color: '#9b59b6', legendFontColor: theme.colors.text, legendFontSize: 12 },
     ].filter(data => data.population > 0);
 
-    // 2. Tasks Per User (Bar Chart - Workload)
     const sortedUsersByCount = tasksPerUser
         .filter(u => u.count > 0)
         .sort((a, b) => b.count - a.count);
@@ -408,7 +459,6 @@ const DashboardScreen = () => {
         ]
     };
 
-    // 3. User Completion Rate (Line Chart - Effectiveness)
     const sortedUsersByCompletionRate = tasksPerUser
         .filter(u => u.count > 0)
         .sort((a, b) => (b.completed / b.count) - (a.completed / a.count));
@@ -425,7 +475,6 @@ const DashboardScreen = () => {
         legend: ['Completion Rate (%)']
     };
 
-    // 4. Overdue Tasks by Current Status (Pie Chart - Risk Focus)
     const overdueTodo = overdueTasksList.filter(t => t.status === 'todo' || t.status === 'pending').length;
     const overdueInProgress = overdueTasksList.filter(t => t.status === 'inprogress').length;
 
@@ -434,7 +483,6 @@ const DashboardScreen = () => {
         { name: 'In Progress (Stalled)', population: overdueInProgress, color: '#f39c12', legendFontColor: theme.colors.text, legendFontSize: 12 },
     ].filter(data => data.population > 0);
 
-    // 5. Average Time to Completion by User (Bar Chart - Efficiency)
     const sortedUsersByAvgTime = tasksPerUser
         .filter(u => u.avgCompletion > 0)
         .sort((a, b) => a.avgCompletion - b.avgCompletion);
@@ -446,7 +494,6 @@ const DashboardScreen = () => {
         ]
     };
 
-    // 6. Task Aging (Bar Chart - Bottleneck Analysis)
     const agingTasks = tasks.filter(t => t.status === 'todo' || t.status === 'inprogress');
     const today = new Date();
 
@@ -462,7 +509,6 @@ const DashboardScreen = () => {
         datasets: [{ data: Object.values(agingBins) }]
     };
 
-    // 7. Tasks Created Over Time (Line Chart - Workload Trend)
     const taskCreationByMonth = tasks.reduce((acc, t) => {
         const date = safeDate(t.createdAt);
         const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -472,13 +518,12 @@ const DashboardScreen = () => {
 
     const sortedMonths = Object.keys(taskCreationByMonth).sort();
     const workloadTrendData = {
-        labels: sortedMonths.slice(-6).map(m => m.slice(5)), // Last 6 months
+        labels: sortedMonths.slice(-6).map(m => m.slice(5)),
         datasets: [{ data: sortedMonths.slice(-6).map(m => taskCreationByMonth[m]) }]
     };
 
-    // 8. Task Priority Breakdown (Pie Chart - Resource Allocation)
     const priorityCounts = tasks.reduce((acc, t) => {
-        const priority = t.priority || 'Medium'; // Default to Medium if not set
+        const priority = t.priority || 'Medium';
         acc[priority] = (acc[priority] || 0) + 1;
         return acc;
     }, {});
@@ -488,22 +533,6 @@ const DashboardScreen = () => {
         { name: 'Medium', population: priorityCounts['Medium'] || 0, color: '#f39c12', legendFontColor: theme.colors.text, legendFontSize: 12 },
         { name: 'Low', population: priorityCounts['Low'] || 0, color: '#2ecc71', legendFontColor: theme.colors.text, legendFontSize: 12 },
     ].filter(data => data.population > 0);
-
-    // ---------------------------------------------
-
-    // ---------------------------------------------
-    // PDF Generation and DOWNLOAD Logic (Unchanged)
-    // ---------------------------------------------
-
-    const renderUserCard = ({ item }) => (
-        // 'item' here is one user object from the tasksPerUser array
-        <UserPerformanceCard
-            user={item}
-            theme={theme}
-            scale={scale}
-            onPress={handleUserPress}
-        />
-    );
 
     const createAndSharePdf = async (contentGenerator, data, fileNameBase) => {
         if (isDownloading) return;
@@ -549,7 +578,6 @@ const DashboardScreen = () => {
     };
 
     const handleUserPress = (user) => {
-        // Find the full user data with calculated metrics
         const fullUser = tasksPerUser.find(u => u.uid === user.uid);
         setSelectedUser(fullUser);
         setModalVisible(true);
@@ -576,12 +604,11 @@ const DashboardScreen = () => {
         },
     };
 
-    // --- RENDER ---
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
 
-                {/* --- DOWNLOAD REPORT BUTTON (Overall Analytics) --- */}
+                { }
                 <TouchableOpacity
                     style={[styles.downloadButton, { backgroundColor: theme.colors.primary, marginBottom: 20 }]}
                     onPress={handleDownloadReport}
@@ -597,7 +624,7 @@ const DashboardScreen = () => {
                     )}
                 </TouchableOpacity>
 
-                {/* KPI Cards (Numeric Metrics) */}
+                { }
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 16 }}>
                     {[tasks.length, completedTasksCount, inProgressTasksCount, todoTasksCount, rejectedTasksCount, overdueTasksList.length].map((value, idx) => (
                         <Card key={idx} style={[styles.kpiCard, { width: screenWidth < 400 ? '48%' : '30%', backgroundColor: theme.colors.card }]}>
@@ -611,12 +638,12 @@ const DashboardScreen = () => {
                     ))}
                 </View>
 
-                {/* ======================================= */}
-                {/* 📊 TASK ANALYTICS SECTION (Status & Risk) */}
-                {/* ======================================= */}
+                { }
+                { }
+                { }
                 <Text style={[styles.sectionTitle, { fontSize: 18 * scale, color: theme.colors.text, marginTop: 10, marginBottom: 5 }]}>Task Analytics (Health & Risk)</Text>
 
-                {/* 1. Overall Task Status Breakdown (Pie Chart) */}
+                { }
                 <Card style={[styles.chartCard, { backgroundColor: theme.colors.card }]}>
                     <Card.Title
                         title="Overall Task Status Breakdown"
@@ -640,7 +667,7 @@ const DashboardScreen = () => {
                     </Card.Content>
                 </Card>
 
-                {/* 2. Overdue Tasks by Current Status (Pie Chart) */}
+                { }
                 <Card style={[styles.chartCard, { backgroundColor: theme.colors.card }]}>
                     <Card.Title
                         title="Overdue Tasks by Current Status (Risk Focus)"
@@ -664,7 +691,7 @@ const DashboardScreen = () => {
                     </Card.Content>
                 </Card>
 
-                {/* 3. Task Aging (Bar Chart - Bottleneck Analysis) */}
+                { }
                 <Card style={[styles.chartCard, { backgroundColor: theme.colors.card }]}>
                     <Card.Title
                         title="Incomplete Task Aging (Days)"
@@ -689,7 +716,7 @@ const DashboardScreen = () => {
                     </Card.Content>
                 </Card>
 
-                {/* 4. Task Priority Breakdown (Pie Chart - Resource Allocation) */}
+                { }
                 <Card style={[styles.chartCard, { backgroundColor: theme.colors.card }]}>
                     <Card.Title
                         title="Task Priority Distribution"
@@ -713,13 +740,12 @@ const DashboardScreen = () => {
                     </Card.Content>
                 </Card>
 
-
-                {/* ======================================= */}
-                {/* 📈 WORKLOAD & EFFICIENCY SECTION          */}
-                {/* ======================================= */}
+                { }
+                { }
+                { }
                 <Text style={[styles.sectionTitle, { fontSize: 18 * scale, color: theme.colors.text, marginTop: 24, marginBottom: 5 }]}>Workload & Efficiency Metrics</Text>
 
-                {/* 5. Tasks Created Over Time (Line Chart - Workload Trend) */}
+                { }
                 <Card style={[styles.chartCard, { backgroundColor: theme.colors.card }]}>
                     <Card.Title
                         title="Task Creation Trend (Last 6 Months)"
@@ -744,7 +770,7 @@ const DashboardScreen = () => {
                     </Card.Content>
                 </Card>
 
-                {/* 6. Tasks Per User (Bar Chart - Workload) */}
+                { }
                 <Card style={[styles.chartCard, { backgroundColor: theme.colors.card }]}>
                     <Card.Title
                         title="Users by Total Tasks Assigned (Workload)"
@@ -769,7 +795,7 @@ const DashboardScreen = () => {
                     </Card.Content>
                 </Card>
 
-                {/* 7. User Completion Rate (Line Chart - Effectiveness) */}
+                { }
                 <Card style={[styles.chartCard, { backgroundColor: theme.colors.card }]}>
                     <Card.Title
                         title="User Task Completion Rate (%) (Effectiveness)"
@@ -794,7 +820,7 @@ const DashboardScreen = () => {
                     </Card.Content>
                 </Card>
 
-                {/* 8. Average Time to Completion by User (Bar Chart - Efficiency) */}
+                { }
                 <Card style={[styles.chartCard, { backgroundColor: theme.colors.card, marginBottom: 20 }]}>
                     <Card.Title
                         title="Average Time to Completion (Hrs) (Efficiency)"
@@ -819,14 +845,16 @@ const DashboardScreen = () => {
                     </Card.Content>
                 </Card>
 
-
-                {/* 👤 USER SPECIFIC CARD LIST */}
+                { }
                 <Text style={[styles.sectionTitle, { fontSize: 18 * scale, color: theme.colors.text, marginTop: 24 }]}>Detailed User List</Text>
-                <ScrollView 
-                    style={{ flex: 1 }} 
-                    contentContainerStyle={{ paddingBottom: 100 }}>
-                {tasksPerUser.map(user => (
-                    
+
+                { }
+                <ScrollView
+                    style={styles.userListScrollContainer}
+                    contentContainerStyle={{ paddingBottom: 0 }}
+                    nestedScrollEnabled={true}
+                >
+                    {tasksPerUser.map(user => (
                         <UserPerformanceCard
                             key={user.uid}
                             user={user}
@@ -834,10 +862,12 @@ const DashboardScreen = () => {
                             scale={scale}
                             onPress={handleUserPress}
                         />
-                  
-                ))}
+                    ))}
                 </ScrollView>
-              
+                { }
+                <View style={{ height: 120 }} />
+
+                { }
                 <Modal
                     animationType="slide"
                     transparent={true}
@@ -846,6 +876,7 @@ const DashboardScreen = () => {
                 >
                     <View style={styles.modalBackground}>
                         <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
+                            { }
                             <View style={styles.modalHeader}>
                                 {selectedUser?.profilePicUrl ? (
                                     <Image
@@ -916,6 +947,7 @@ const DashboardScreen = () => {
                         </View>
                     </View>
                 </Modal>
+
             </ScrollView>
 
             <Snackbar
@@ -936,12 +968,95 @@ const DashboardScreen = () => {
                 </Text>
             </Snackbar>
 
+            { }
+            <View style={styles.floatingContainer}>
+                <Pressable
+                    style={[styles.floatingButton, { backgroundColor: theme.colors.primary, position: 'relative' }]}
+                    onPress={() => setRequestsModalVisible(true)}
+                >
+                    <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name="chatbubbles-outline" size={26} color={theme.colors.text} />
+                        <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Requests</Text>
+                    </View>
+
+                    {newRequestCount > 0 && (
+                        <View style={styles.badgeContainer}>
+                            <Text style={styles.badgeText}>{newRequestCount}</Text>
+                        </View>
+                    )}
+                </Pressable>
+            </View>
+
+            { }
+            <Modal
+                visible={requestsModalVisible}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setRequestsModalVisible(false)}
+            >
+                <View style={styles.modalBackground}>
+                    <View style={[styles.requestsModalContainerWithIcon, { backgroundColor: theme.colors.card }]}>
+                        { }
+                        <Pressable
+                            onPress={() => setRequestsModalVisible(false)}
+                            style={styles.absoluteCloseIcon}
+                            hitSlop={12}
+                        >
+                            <Ionicons name="close" size={28} color={theme.colors.text} />
+                        </Pressable>
+
+                        { }
+                        <Text style={[styles.modalTitle, { color: theme.colors.text, marginBottom: 10 }]}>Requests</Text>
+
+                        {loadingRequests ? (
+                            <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
+                        ) : allRequests.length === 0 ? (
+                            <Text style={{ color: theme.colors.text, marginTop: 20, textAlign: 'center' }}>
+                                No active requests found for your domain.
+                            </Text>
+                        ) : (
+                            <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
+                                {allRequests.map(req => (
+                                    <View
+                                        key={req.requestId}
+                                        style={[styles.requestItem, { borderColor: theme.colors.border, backgroundColor: theme.colors.background }]}
+                                    >
+                                        <Text style={[styles.requestType, { color: theme.colors.primary }]}>{req.requestType}</Text>
+                                        <Text style={[styles.requestDesc, { color: theme.colors.text }]}>{req.description}</Text>
+                                        <Text style={[styles.requestMeta, { color: theme.colors.text + '99' }]}>
+                                            User: {req.requesterName} | Contact: {req.requesterContact} | Role: {req.requesterRole}
+                                        </Text>
+                                        <View style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap-reverse', gap: 6 }}>
+                                            {['new', 'pending', 'fulfilled', 'reject'].map(status => (
+                                                <Pressable
+                                                    key={status}
+                                                    onPress={() => updateRequestStatus(req.userId, req.requestId, status, setAllRequests)}
+                                                    style={{
+                                                        backgroundColor: req.status === status ? theme.colors.primary : theme.colors.card,
+                                                        paddingVertical: 6,
+                                                        paddingHorizontal: 10,
+                                                        borderRadius: 6,
+                                                        marginRight: 8,
+                                                    }}
+                                                >
+                                                    <Text style={{ color: req.status === status ? '#fff' : theme.colors.text, fontWeight: '600' }}>
+                                                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                                                    </Text>
+                                                </Pressable>
+                                            ))}
+                                        </View>
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        )}
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };
 
-// --- STYLES ---
-const styles = StyleSheet.create({
+const baseStyles = StyleSheet.create({
     sectionTitle: { fontWeight: 'bold', marginVertical: 12 },
     kpiCard: { marginBottom: 12, paddingVertical: 16, alignItems: 'center' },
     kpiValue: { fontWeight: 'bold', marginBottom: 4 },
@@ -970,7 +1085,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 4,
         justifyContent: 'space-between',
-        
+
     },
     nameContainer: {
         flexDirection: 'row',
@@ -1086,8 +1201,97 @@ const styles = StyleSheet.create({
     snackbar: {
         borderRadius: 8,
         marginHorizontal: 10,
-        marginBottom: 10,
-    }
+        marginBottom: 80,
+    },
+
+    userListScrollContainer: {
+        maxHeight: 400,
+
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#ccc4',
+    },
 });
+
+const requestStyles = StyleSheet.create({
+    floatingContainer: {
+        position: 'absolute',
+        bottom: 100,
+        right: 20,
+        zIndex: 100
+    },
+    floatingButton: {
+        right: 0,
+        padding: 8,
+        height: 50,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+    },
+    requestsModalContainerWithIcon: {
+        width: '90%',
+        maxHeight: '80%',
+        borderRadius: 12,
+        padding: 16,
+        position: 'relative',
+    },
+    requestItem: {
+        borderWidth: 1,
+        borderRadius: 10,
+        padding: 10,
+        marginBottom: 10,
+    },
+    requestType: {
+        fontWeight: 'bold',
+        fontSize: 15,
+        marginBottom: 4,
+    },
+    requestDesc: {
+        fontSize: 13,
+        marginBottom: 4,
+    },
+    requestMeta: {
+        fontSize: 12,
+        fontStyle: 'italic',
+    },
+    absoluteCloseIcon: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        zIndex: 2,
+        backgroundColor: 'transparent',
+    },
+    badgeContainer: {
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        backgroundColor: 'red',
+        minWidth: 20,
+        height: 20,
+        borderRadius: 10,
+        paddingHorizontal: 6,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
+        zIndex: 999,
+    },
+    badgeText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 12,
+        textAlign: 'center',
+    },
+});
+
+const styles = {
+    ...baseStyles,
+    ...requestStyles
+};
 
 export default DashboardScreen;

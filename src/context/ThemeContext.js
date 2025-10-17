@@ -1,4 +1,3 @@
-// ThemeContext.js
 import React, { createContext, useState, useEffect } from 'react';
 import { Appearance } from 'react-native';
 import { LightTheme, DarkTheme } from '../utils/theme';
@@ -6,7 +5,7 @@ import { LightTheme, DarkTheme } from '../utils/theme';
 export const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-    const [themeMode, setThemeMode] = useState('system'); // 'light', 'dark', 'system'
+    const [themeMode, setThemeMode] = useState('system');
     const [theme, setTheme] = useState(LightTheme);
 
     useEffect(() => {

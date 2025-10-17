@@ -29,7 +29,6 @@ const SuperAdminTabs = () => {
       const userDoc = await userDocRef.get();
       const preferences = userDoc.exists ? userDoc.data().notificationPreferences || {} : {};
 
-      // --- Location Permission ---
       const locationPermission = Platform.select({
         ios: PERMISSIONS.IOS.LOCATION_WHEN_IN_USE,
         android: PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION,
@@ -119,14 +118,6 @@ const SuperAdminTabs = () => {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.text,
-        // tabBarStyle: {
-        //   backgroundColor: theme.colors.card,
-        //   borderTopWidth: 0,
-        //   elevation: 0,
-        //   height: 60,
-     
-        // },
-
         tabBarStyle: {
           backgroundColor: theme.colors.card,
           borderTopColor: theme.colors.border,

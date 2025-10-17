@@ -17,6 +17,7 @@ import { ThemeProvider, ThemeContext } from './src/context/ThemeContext';
 import { Provider as PaperProvider } from 'react-native-paper';
 import usePushNotifications from './src/hooks/usePushNotifications';
 import {createDefaultChannel} from "./src/utils/notificationChannel";
+import ForgotPasswordScreen from './src/screens/auth/ForgotPassword';
 
 
 
@@ -44,6 +45,10 @@ export default function App() {
             <Stack.Screen name="user" component={UserScreen} />
             <Stack.Screen name="admin" component={AdminScreen} />
             <Stack.Screen name="superAdmin" component={SuperAdminScreen} />
+              <Stack.Screen
+                name="forgotPassword"
+                component={ForgotPasswordScreen}
+              />
           </Stack.Navigator>
         </NavigationContainer>
       </ThemeProvider>
