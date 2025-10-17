@@ -140,7 +140,6 @@ const ViewUserTasksModal = ({ isVisible, onDismiss, user, theme }) => {
                     </ScrollView>
                 )}
 
-                {/* Floating Close Button */}
                 <Pressable
                     onPress={onDismiss}
                     style={[styles.closeButton, { backgroundColor: theme.colors.primary }]}

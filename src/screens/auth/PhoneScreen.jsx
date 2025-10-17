@@ -22,13 +22,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemeContext } from '../../context/ThemeContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-// --- Constants ---
 const { width } = Dimensions.get('window');
-const COLLECTIONS = { USERS: 'users', DEPARTMENTS: 'departments' }; // ✨ ADDED DEPARTMENTS
+const COLLECTIONS = { USERS: 'users', DEPARTMENTS: 'departments' };
 const USER_ROLES = { USER: 'user', ADMIN: 'admin', SUPERADMIN: 'superadmin' };
 const OTP_LENGTH = 6;
 
-// ✨ NEW CONSTANT: Department Options
 const DEPARTMENT_OPTIONS = [
     'IT & Technology',
     'Human Resources',
@@ -51,24 +49,20 @@ export default function PhoneAuthScreen() {
     const [otp, setOtp] = useState('');
     const [userName, setUserName] = useState('');
 
-    // ⬇️ UPDATED STATES FOR ONBOARDING
     const [userEmail, setUserEmail] = useState('');
     const [addressLine, setAddressLine] = useState('');
     const [city, setCity] = useState('');
     const [state, setState] = useState('');
     const [country, setCountry] = useState('');
-    const [department, setDepartment] = useState(''); // ✨ NEW STATE: Department
+    const [department, setDepartment] = useState('');
 
     const otpInputRef = useRef(null);
 
-    // Color definitions
     const primaryColor = theme.colors.primary || paperTheme.colors.primary;
     const accentColor = theme.colors.accent || paperTheme.colors.accent;
     const textColor = theme.colors.text || paperTheme.colors.onSurface;
     const textSecondaryColor = theme.colors.textSecondary || paperTheme.colors.onSurfaceVariant;
 
-
-    // Auto-focus OTP input when stepping to OTP screen
     useEffect(() => {
         if (step === 'otp') {
             const timer = setTimeout(() => {
@@ -78,7 +72,6 @@ export default function PhoneAuthScreen() {
         }
     }, [step]);
 
-    // --- Authentication Functions (Logic remains mostly the same) ---
     const sendOtp = async () => {
         const cleanedNumber = phoneNumber.replace(/[^0-9]/g, '');
         if (cleanedNumber.length !== 10) return Alert.alert('Invalid Number', 'Please enter a 10-digit phone number.');
@@ -112,29 +105,29 @@ export default function PhoneAuthScreen() {
                 const hasRole = userData && userData.role;
                 const hasEmail = userData && userData.email;
                 const hasAddress = userData && userData.address && userData.address.addressLine;
-                const hasDepartment = userData && userData.department; // ✨ CHECK FOR DEPARTMENT
+                const hasDepartment = userData && userData.department;
 
                 if (hasRole && hasEmail && hasAddress && hasDepartment) {
-                    // Existing user with all required fields
+
                     redirectByRole(userData.role);
                 } else if (!hasEmail) {
                     setStep('email');
                 } else if (!hasAddress) {
-                    // Pre-fill if partial data exists
+
                     setAddressLine(userData?.address?.addressLine || '');
                     setCity(userData?.address?.city || '');
                     setState(userData?.address?.state || '');
                     setCountry(userData?.address?.country || '');
                     setStep('fullAddress');
-                } else if (!hasDepartment) { // ✨ NEW CHECK: If address is done, check for department
+                } else if (!hasDepartment) {
                     setStep('department');
                 } else if (!hasRole) {
-                    // Existing user missing role/name (should only happen if they stop here)
+
                     setStep('name');
                 }
 
             } else {
-                // New user, start onboarding
+
                 setStep('email');
             }
 
@@ -146,7 +139,6 @@ export default function PhoneAuthScreen() {
         }
     };
 
-    // ⬇️ FUNCTION: Save Email
     const saveUserEmail = async () => {
         if (!userEmail.trim() || !userEmail.includes('@')) {
             return Alert.alert('Error', 'Please enter a valid email address.');
@@ -161,7 +153,6 @@ export default function PhoneAuthScreen() {
                 { merge: true }
             );
 
-            // Check next missing step
             const userDoc = await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).get();
             const userData = userDoc.data();
             const hasAddress = userData && userData.address && userData.address.addressLine;
@@ -184,7 +175,6 @@ export default function PhoneAuthScreen() {
         }
     };
 
-    // ⬇️ FUNCTION: Save Full Address
     const saveFullAddress = async () => {
         if (!addressLine.trim() || !city.trim() || !state.trim() || !country.trim()) {
             return Alert.alert('Missing Field', 'Please fill in all address fields to continue.');
@@ -209,12 +199,11 @@ export default function PhoneAuthScreen() {
                 { merge: true }
             );
 
-            // Move to department setup
             const userDoc = await firestore().collection(COLLECTIONS.USERS).doc(firebaseUser.uid).get();
             const userData = userDoc.data();
 
             if (!userData.department) {
-                setStep('department'); // ✨ MOVE TO NEW DEPARTMENT STEP
+                setStep('department');
             } else if (!userData.role) {
                 setStep('name');
             } else {
@@ -229,7 +218,6 @@ export default function PhoneAuthScreen() {
         }
     };
 
-    // ✨ NEW FUNCTION: Save Department and Finalize
     const saveDepartment = async () => {
         if (!department.trim()) {
             return Alert.alert('Error', 'Please select your department.');
@@ -243,12 +231,11 @@ export default function PhoneAuthScreen() {
             const trimmedDepartment = department.trim();
             const uid = firebaseUser.uid;
 
-            // 1. Update the user document with the department and initial role/name
             const userData = {
                 department: trimmedDepartment,
-                role: USER_ROLES.USER, // Assume this is the final onboarding step where the role is set
-                name: userName.trim() || 'User', // Use existing name or default 'User'
-                createdAt: firestore.FieldValue.serverTimestamp(), // Ensure creation timestamp if new
+                role: USER_ROLES.USER,
+                name: userName.trim() || 'User',
+                createdAt: firestore.FieldValue.serverTimestamp(),
                 updatedAt: firestore.FieldValue.serverTimestamp(),
             };
 
@@ -257,12 +244,11 @@ export default function PhoneAuthScreen() {
                 { merge: true }
             );
 
-            // 2. CRITICAL STEP: Add user UID to the departments collection
             await firestore().collection(COLLECTIONS.DEPARTMENTS).doc(trimmedDepartment).set({
-                // Atomically add the UID to the 'users' array field
+
                 users: firestore.FieldValue.arrayUnion(uid),
                 name: trimmedDepartment,
-            }, { merge: true }); // Use merge:true to only update the 'users' array field
+            }, { merge: true });
 
             Alert.alert('Success', 'Profile setup complete!');
             redirectByRole(USER_ROLES.USER);
@@ -275,13 +261,9 @@ export default function PhoneAuthScreen() {
         }
     };
 
-
-    // 🔄 MODIFIED FUNCTION: Simplified to check only for the name if department is done
     const saveUser = async () => {
         if (!userName.trim()) return Alert.alert('Error', 'Please enter your name.');
 
-        // If they reach 'name', it means email and address are done, but department might not be.
-        // Let's assume the flow should go to department next if it's missing.
         setLoading(true);
         try {
             const firebaseUser = auth().currentUser;
@@ -296,7 +278,6 @@ export default function PhoneAuthScreen() {
                 { merge: true }
             );
 
-            // Check next missing step (should only be department or finish)
             if (!existingData.department) {
                 setStep('department');
             } else {
@@ -311,7 +292,7 @@ export default function PhoneAuthScreen() {
     };
 
     const redirectByRole = (role) => {
-        // ... (redirect logic remains the same)
+
         switch (role) {
             case USER_ROLES.USER:
                 navigation.reset({ index: 0, routes: [{ name: 'user' }] });
@@ -327,7 +308,6 @@ export default function PhoneAuthScreen() {
         }
     };
 
-    // Helper to generate the visual OTP boxes (Custom Grid) - Unchanged
     const renderOtpInputs = () => {
         const digits = otp.split('');
         const inputs = Array(OTP_LENGTH).fill(0).map((_, index) => {
@@ -373,7 +353,6 @@ export default function PhoneAuthScreen() {
         );
     };
 
-    // --- Render Content based on Step ---
     const renderContent = () => {
         switch (step) {
             case 'phone':
@@ -425,7 +404,7 @@ export default function PhoneAuthScreen() {
                         </Button>
                     </>
                 );
-            // ⬇️ STEP: Collect Email
+
             case 'email':
                 return (
                     <>
@@ -447,7 +426,6 @@ export default function PhoneAuthScreen() {
                     </>
                 );
 
-            // ⬇️ STEP: Collect Full Address
             case 'fullAddress':
                 return (
                     <>
@@ -498,7 +476,6 @@ export default function PhoneAuthScreen() {
                     </>
                 );
 
-            // ✨ NEW STEP: Department Selection
             case 'department':
                 return (
                     <>
@@ -553,64 +530,59 @@ export default function PhoneAuthScreen() {
         }
     };
 
-    // 🔄 MODIFIED FUNCTION: Helper functions for the main action button
     const getButtonAction = () => {
         switch (step) {
             case 'phone': return () => sendOtp();
             case 'otp': return () => verifyOtp();
             case 'email': return () => saveUserEmail();
             case 'fullAddress': return () => saveFullAddress();
-            case 'name': return () => { // If name is last, it should check if department is missing.
+            case 'name': return () => {
                 if (!department) {
-                    setStep('department'); // Fallback if dept was somehow missed
+                    setStep('department');
                 } else {
-                    saveUser(); // Save name, then redirect
+                    saveUser();
                 }
             };
-            case 'department': return () => saveDepartment(); // ✨ NEW ACTION
+            case 'department': return () => saveDepartment();
             default: return () => { };
         }
     };
 
-    // 🔄 MODIFIED FUNCTION: Helper function for button text
     const getButtonText = () => {
         switch (step) {
             case 'phone': return 'Send OTP';
             case 'otp': return 'Verify & Continue';
             case 'email': return 'Save Email & Continue';
             case 'fullAddress': return 'Save Address & Continue';
-            case 'department': return 'Select Department & Complete'; // ✨ NEW TEXT
+            case 'department': return 'Select Department & Complete';
             case 'name': return 'Save Name & Continue';
             default: return 'Next';
         }
     };
 
-    // 🔄 MODIFIED FUNCTION: Helper function for the main title
     const getTitleText = () => {
         switch (step) {
             case 'phone': return 'Secure Login';
             case 'otp': return 'One-Time Passcode';
             case 'email': return 'Email Collection';
             case 'fullAddress': return 'Address Details';
-            case 'department': return 'Department Setup'; // ✨ NEW TEXT
+            case 'department': return 'Department Setup';
             case 'name': return 'Profile Setup';
             default: return 'Login';
         }
     };
 
-    // 🔄 MODIFIED FUNCTION: Helper function for the subtitle
     const getSubtitleText = () => {
         switch (step) {
             case 'phone': return 'Log in or sign up with your phone number.';
             case 'otp': return 'Please check your SMS for the code.';
             case 'email': return 'This helps with order confirmations and account security.';
             case 'fullAddress': return 'We need your complete address for delivery services.';
-            case 'department': return 'Select your working department for team organization.'; // ✨ NEW TEXT
+            case 'department': return 'Select your working department for team organization.';
             case 'name': return 'Just one more step to start using the app!';
             default: return '';
         }
     };
-
 
     return (
         <KeyboardAvoidingView
@@ -623,12 +595,12 @@ export default function PhoneAuthScreen() {
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
             >
-                {/* Visual Element */}
+                { }
                 <View style={styles.visualContainer}>
                     <Ionicons name="finger-print-outline" size={80} color={primaryColor} />
                 </View>
 
-                {/* Text Header - Using RNP Text components */}
+                { }
                 <View style={styles.headerContainer}>
                     <Text variant="headlineLarge" style={[styles.title, { color: textColor }]}>
                         {getTitleText()}
@@ -638,14 +610,14 @@ export default function PhoneAuthScreen() {
                     </Text>
                 </View>
 
-                {/* Main Content */}
+                { }
                 <View style={[styles.contentWrapper]}>
                     {renderContent()}
                 </View>
 
             </ScrollView>
 
-            {/* Floating/Fixed Bottom Button - Using RNP Button */}
+            { }
             <View style={[styles.floatingButtonContainer, { paddingBottom: insets.bottom + 20 }]}>
                 <Button
                     mode="contained"
@@ -658,7 +630,7 @@ export default function PhoneAuthScreen() {
                 >
                     {getButtonText()}
                 </Button>
-                {/* Link to go back to regular Login */}
+                { }
                 <Button
                     mode="text"
                     onPress={() => navigation.navigate('login')}
@@ -681,7 +653,7 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         paddingHorizontal: 25,
         paddingTop: 50,
-        paddingBottom: 150, // Space for the floating button
+        paddingBottom: 150,
     },
     visualContainer: {
         alignItems: 'center',
@@ -708,12 +680,12 @@ const styles = StyleSheet.create({
     label: {
         marginBottom: 10,
         fontWeight: '600',
-        alignSelf: 'flex-start', // Align label left
+        alignSelf: 'flex-start',
     },
     centerText: {
         textAlign: 'center',
     },
-    // RNP TextInput styling
+
     rnpInput: {
         width: '100%',
         marginBottom: 20,
@@ -727,7 +699,7 @@ const styles = StyleSheet.create({
         width: '48%',
         marginBottom: 20,
     },
-    // ✨ NEW STYLES: Department Chips
+
     departmentContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -740,7 +712,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         borderRadius: 20,
     },
-    // --- Custom OTP Grid Styles (unchanged) ---
+
     otpVisualInput: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -771,7 +743,7 @@ const styles = StyleSheet.create({
         fontSize: 1,
         height: '100%',
     },
-    // --- End Custom OTP Grid Styles ---
+
     floatingButtonContainer: {
         position: 'absolute',
         bottom: 0,

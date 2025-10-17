@@ -29,17 +29,15 @@ const VerificationScreen = () => {
     const pollRef = useRef(null);
     const emailSentRef = useRef(false);
 
-    // Disable hardware back button
     useFocusEffect(
         useCallback(() => {
             const onBackPress = () => true;
             const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-            return () => subscription.remove(); // ✅ modern way
+            return () => subscription.remove();
         }, [])
     );
 
 
-    // Countdown for resend
     const startResendTimer = useCallback(() => {
         setResendTimer(30);
         clearInterval(timerRef.current);
@@ -54,7 +52,6 @@ const VerificationScreen = () => {
         }, 1000);
     }, []);
 
-    // Progress bar animation
     const startProgressBar = useCallback(() => {
         progressAnim.setValue(0);
         Animated.timing(progressAnim, {
@@ -64,7 +61,6 @@ const VerificationScreen = () => {
         }).start();
     }, [progressAnim]);
 
-    // Listen to auth state and navigate if email verified
     useEffect(() => {
         pollRef.current = setInterval(async () => {
             const user = auth().currentUser;
@@ -93,7 +89,6 @@ const VerificationScreen = () => {
         };
     }, [navigation]);
 
-    // Send verification email on mount
     useEffect(() => {
         if (!currentUser || currentUser.emailVerified) return;
 
@@ -117,7 +112,6 @@ const VerificationScreen = () => {
         }
     }, [currentUser, startResendTimer, startProgressBar]);
 
-    // Resend verification email
     const resendEmail = async () => {
         if (resendTimer > 0 || !currentUser) return;
 
@@ -144,7 +138,6 @@ const VerificationScreen = () => {
         outputRange: ['0%', '100%'],
     });
 
-    // Loading state if currentUser is missing
     if (!currentUser) {
         return (
             <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>

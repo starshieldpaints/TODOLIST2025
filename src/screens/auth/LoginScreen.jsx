@@ -3,32 +3,31 @@ import {
     View,
     StyleSheet,
     Alert,
-    KeyboardAvoidingView, // Added for better keyboard handling
+    KeyboardAvoidingView,
     Platform,
-    ScrollView, // Added for scroll capability
+    ScrollView,
 } from 'react-native';
 import {
     TextInput,
     Button,
-    Text, // Using RNP Text component
+    Text,
     ActivityIndicator,
-    useTheme as usePaperTheme, // For Paper-specific colors if needed
-} from 'react-native-paper'; // 👈 Import Paper components
+    useTheme as usePaperTheme,
+} from 'react-native-paper';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
-import { useTheme } from '../../hooks/useTheme'; // your custom theme hook
+import { useTheme } from '../../hooks/useTheme';
 
 const LoginScreen = () => {
     const navigation = useNavigation();
-    const customTheme = useTheme(); // Your custom theme for background
-    const paperTheme = usePaperTheme(); // RNP theme for component styling
+    const customTheme = useTheme();
+    const paperTheme = usePaperTheme();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // 💡 Added state for password visibility (matching register screen)
     const [showPassword, setShowPassword] = useState(false);
 
     const handleLogin = async () => {
@@ -44,7 +43,7 @@ const LoginScreen = () => {
             const userDoc = await firestore().collection('users').doc(uid).get();
             if (!userDoc.exists) {
                 Alert.alert('Error', 'User not found. Try signing up.');
-                // ⚠️ IMPORTANT: Sign out user if doc is missing to prevent half-login state
+
                 await auth().signOut();
                 setLoading(false);
                 return;
@@ -83,10 +82,10 @@ const LoginScreen = () => {
         >
             <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
 
-                {/* Replaced Text with RNP Text, applying screenTitle style */}
+                { }
                 <Text style={styles.screenTitle}>Welcome Back</Text>
 
-                {/* Replaced native TextInput with RNP TextInput */}
+                { }
                 <TextInput
                     label="Email"
                     value={email}
@@ -97,7 +96,7 @@ const LoginScreen = () => {
                     autoCapitalize="none"
                 />
 
-                {/* Replaced native TextInput with RNP TextInput and added eye toggle */}
+                { }
                 <TextInput
                     label="Password"
                     value={password}
@@ -113,7 +112,7 @@ const LoginScreen = () => {
                     }
                 />
 
-                {/* Replaced TouchableOpacity with RNP Button */}
+                { }
                 <Button
                     mode="contained"
                     onPress={handleLogin}
@@ -122,14 +121,11 @@ const LoginScreen = () => {
                     contentStyle={styles.buttonContent}
                     disabled={loading}
                 >
-                    
 
-                     Login
+                    Login
                 </Button>
 
-                {/* Added Forgot Password button (common UX) 
-                    and used RNP Button in text mode.
-                */}
+                { }
                 <Button
                     mode="text"
                     onPress={() => navigation.navigate('forgotPassword')}
@@ -141,21 +137,21 @@ const LoginScreen = () => {
                 </Button>
 
                 <View style={styles.footer}>
-                    {/* Used RNP Text */}
+                    { }
                     <Text style={styles.footerText}>Don't have an account? </Text>
 
-                    {/* Replaced TouchableOpacity with RNP Button in text mode */}
+                    { }
                     <Button
                         mode="elevated"
                         onPress={() => navigation.navigate('register')}
                         compact
-                        labelStyle={{ fontSize: 14, paddingInline:8 }}
+                        labelStyle={{ fontSize: 14, paddingInline: 8 }}
                     >
                         Sign Up
                     </Button>
                 </View>
 
-                {/* Replaced TouchableOpacity with RNP Button in outlined mode */}
+                { }
                 <Button
                     mode="outlined"
                     onPress={() => navigation.navigate('phoneAuth')}

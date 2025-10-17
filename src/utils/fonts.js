@@ -1,11 +1,11 @@
 export const Fonts = {
     Kalam: {
-        Regular: 'Kalam', // Kalam-Regular.ttf
+        Regular: 'Kalam', 
     },
     Poppins: {
-        Regular: 'Poppins', // Poppins-Regular.ttf
+        Regular: 'Poppins', 
     },
     SecularOne: {
-        Regular: 'Secular One', // SecularOne-Regular.ttf
+        Regular: 'Secular One', 
     },
 };

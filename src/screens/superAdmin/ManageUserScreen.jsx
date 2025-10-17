@@ -228,7 +228,7 @@ const UserCardDisplay = ({
     openChangeAdminModal,
     setSelectedUserForAdminAction,
     setIsLoading,
-    openViewTasksModal, // ✅ receives from parent
+    openViewTasksModal, 
 }) => {
     const scale = screenWidth / 375;
     const iconSize = 14 * scale;
@@ -293,7 +293,7 @@ const UserCardDisplay = ({
     return (
         <View style={{ marginBottom: 16 }}>
             <Pressable
-                onPress={() => openViewTasksModal(item)} // ✅ Corrected reference
+                onPress={() => openViewTasksModal(item)} 
                 style={[
                     styles.userCard,
                     {
@@ -318,7 +318,7 @@ const UserCardDisplay = ({
 
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Pressable
-                            onPress={() => openViewTasksModal(item)} // ✅ fixed duplicate call
+                            onPress={() => openViewTasksModal(item)} 
                             style={[
                                 styles.viewTasksButton,
                                 {

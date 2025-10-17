@@ -51,7 +51,6 @@ const SuperAdminTabs = () => {
         Alert.alert('Location Permission Denied', 'You denied location permission. Some features may not work.');
       }
 
-      // --- Contacts Permission ---
       const contactsPermission = Platform.select({
         ios: PERMISSIONS.IOS.CONTACTS,
         android: PERMISSIONS.ANDROID.READ_CONTACTS,
@@ -61,7 +60,6 @@ const SuperAdminTabs = () => {
         Alert.alert('Contacts Permission Denied', 'You denied access to contacts.');
       }
 
-      // --- Notifications Permission ---
       if (!preferences.push) {
         const notificationGranted = await new Promise(resolve => {
           Alert.alert(

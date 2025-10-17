@@ -1,13 +1,11 @@
-// WorkStatusUpdateModal.js
-
 import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, Pressable, StyleSheet, Dimensions, Modal, ActivityIndicator, Alert, Image } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
-import storage from '@react-native-firebase/storage'; // Import storage
+import storage from '@react-native-firebase/storage';
 import auth from '@react-native-firebase/auth';
-import { launchCamera, launchImageLibrary } from 'react-native-image-picker'; // Import image picker
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { ThemeContext } from '../../../context/ThemeContext'; // Assuming this path is correct
+import { ThemeContext } from '../../../context/ThemeContext';
 
 const useScreenWidth = () => Dimensions.get('window').width;
 
@@ -26,20 +24,17 @@ const WorkStatusUpdateModal = ({ isVisible, onClose, currentWorkStatus }) => {
     const [selectedStatus, setSelectedStatus] = useState(currentWorkStatus || 'wfh');
     const [fieldImageUri, setFieldImageUri] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [step, setStep] = useState(1); // 1: Status selection, 2: Photo upload
+    const [step, setStep] = useState(1);
 
-    // Reset state when modal is opened/closed
     useEffect(() => {
         if (isVisible) {
-            // Use the current status passed from the parent as the initial selection
+
             setSelectedStatus(currentWorkStatus || 'wfh');
             setFieldImageUri(null);
             setStep(1);
         }
     }, [isVisible, currentWorkStatus]);
 
-
-    // --- Image Picker Functions ---
     const selectPhoto = () => {
         const options = {
             mediaType: 'photo',
@@ -70,28 +65,23 @@ const WorkStatusUpdateModal = ({ isVisible, onClose, currentWorkStatus }) => {
         }
     };
 
-
-    // --- Firebase Logic ---
     const uploadImage = async (uri, userId) => {
         if (!uri) return null;
 
-        // Path: users/{userId}/field_images/{timestamp}.jpg
         const timestamp = new Date().getTime();
         const filename = `users/${userId}/field_images/${timestamp}.jpg`;
         const storageRef = storage().ref(filename);
 
-        // Upload the file
         const task = storageRef.putFile(uri);
 
         try {
             await task;
             const downloadURL = await storageRef.getDownloadURL();
 
-            // Return the structure to be saved in Firestore
             return {
                 url: downloadURL,
                 path: filename,
-                uploadedAt: firestore.FieldValue.serverTimestamp(), // Use server timestamp for accuracy
+                uploadedAt: firestore.FieldValue.serverTimestamp(),
             };
         } catch (e) {
             console.error("Image upload failed:", e);
@@ -113,22 +103,21 @@ const WorkStatusUpdateModal = ({ isVisible, onClose, currentWorkStatus }) => {
                     setLoading(false);
                     return;
                 }
-                // Step 1: Upload image to Firebase Storage
+
                 imageInfo = await uploadImage(fieldImageUri, currentUserId);
             }
 
-            // Step 2: Update Firestore
             const updatePayload = {
                 workStatus: selectedStatus,
                 workStatusUpdatedAt: firestore.FieldValue.serverTimestamp(),
             };
 
             if (selectedStatus === 'field' && imageInfo) {
-                // If status is Field, update the image details
+
                 updatePayload.fieldImage = imageInfo;
             } else {
-                // If status is WFH/Office, clear the fieldImage data
-                updatePayload.fieldImage = firestore.FieldValue.delete(); // Removes the field
+
+                updatePayload.fieldImage = firestore.FieldValue.delete();
             }
 
             await userDocRef.update(updatePayload);
@@ -144,9 +133,6 @@ const WorkStatusUpdateModal = ({ isVisible, onClose, currentWorkStatus }) => {
         }
     };
 
-    // --- Render Functions ---
-
-    // Status Selection Step (Step 1)
     const renderStatusSelection = () => (
         <View>
             <Text style={[styles.modalTitle, { color: theme.colors.text, fontSize: 18 * scale }]}>
@@ -202,7 +188,7 @@ const WorkStatusUpdateModal = ({ isVisible, onClose, currentWorkStatus }) => {
                         if (selectedStatus === 'field') {
                             setStep(2);
                         } else {
-                            handleSubmit(); // Direct submit for WFH or Office
+                            handleSubmit();
                         }
                     }}
                     disabled={loading}
@@ -219,7 +205,6 @@ const WorkStatusUpdateModal = ({ isVisible, onClose, currentWorkStatus }) => {
         </View>
     );
 
-    // Photo Upload Step (Step 2 - for 'Field' status)
     const renderPhotoUpload = () => (
         <View>
             <Text style={[styles.modalTitle, { color: theme.colors.text, fontSize: 18 * scale }]}>
@@ -283,7 +268,6 @@ const WorkStatusUpdateModal = ({ isVisible, onClose, currentWorkStatus }) => {
     );
 };
 
-// --- STYLESHEET (for the Modal) ---
 const styles = StyleSheet.create({
     modalBackground: {
         flex: 1,

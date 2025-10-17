@@ -7,9 +7,6 @@ const TaskItem = ({ item, onEdit, onDelete, onStatusChange, onSetDeadline, onSet
     const theme = useTheme();
     const styles = createStyles(theme);
     const [remarksExpanded, setRemarksExpanded] = useState(false);
-
-    // --- Utility Functions ---
-
     const formatDate = (timestamp) => {
         if (!timestamp) return 'No deadline';
         return timestamp.toDate().toLocaleDateString('en-US', {
@@ -27,7 +24,6 @@ const TaskItem = ({ item, onEdit, onDelete, onStatusChange, onSetDeadline, onSet
         });
     }
 
-    // This function determines the displayed status and its indicator color
     const getDisplayStatus = (task) => {
         const now = new Date();
         const isOverdue = task.deadline && task.deadline.toDate() < now;
@@ -47,7 +43,6 @@ const TaskItem = ({ item, onEdit, onDelete, onStatusChange, onSetDeadline, onSet
         }
     };
 
-    // LOGIC FOR STATUS CYCLING
     const getNextStatus = (currentStatus) => {
         switch (currentStatus) {
             case 'Pending':
@@ -69,16 +64,16 @@ const TaskItem = ({ item, onEdit, onDelete, onStatusChange, onSetDeadline, onSet
 
     return (
         <View style={[styles.card, { borderColor: cardAccentColor }]}>
-            {/* Status Indicator Bar */}
+            { }
             <View style={[styles.statusBar, { backgroundColor: cardAccentColor }]} />
 
             <View style={styles.contentContainer}>
-                {/* --- Header (Title and Edit/Delete/Reminder) --- */}
+                { }
                 <View style={styles.cardHeader}>
                     <Text style={styles.title}>{item.title}</Text>
                     <View style={styles.actions}>
 
-                        {/* ⭐️ NEW REMINDER BUTTON ⭐️ */}
+                        { }
                         <TouchableOpacity
                             onPress={() => onSetReminder(item)}
                             style={styles.iconButton}
@@ -87,38 +82,37 @@ const TaskItem = ({ item, onEdit, onDelete, onStatusChange, onSetDeadline, onSet
                             <Icon
                                 name={item.reminder ? "alarm" : "alarm-outline"}
                                 size={22}
-                                // Color changes if a reminder is set
+
                                 color={item.reminder ? theme.colors.primary : theme.colors.text}
                             />
                         </TouchableOpacity>
 
-                        {/* Edit Button */}
+                        { }
                         <TouchableOpacity onPress={() => onEdit(item)} style={styles.iconButton}>
                             <Icon name="create-outline" size={22} color={theme.colors.text} />
                         </TouchableOpacity>
 
-                        {/* Delete Button */}
+                        { }
                         <TouchableOpacity onPress={() => onDelete(item.id)} style={styles.iconButton}>
                             <Icon name="trash-outline" size={22} color={theme.colors.primary} />
                         </TouchableOpacity>
                     </View>
                 </View>
 
-                {/* --- Description --- */}
+                { }
                 <Text style={styles.description}>{item.description}</Text>
 
-                {/* REMINDER INFO */}
+                { }
                 {item.reminder && (
                     <Text style={styles.reminderText}>
                         <Icon name="alarm-outline" size={14} color={theme.colors.text} /> Reminder: {formatDate(item.reminder)} @ {reminderTime}
                     </Text>
                 )}
 
-
-                {/* --- Footer (Deadline and Status Badge) --- */}
+                { }
                 <View style={styles.cardFooter}>
 
-                    {/* DEADLINE BUTTON (Touchable to open the deadline picker) */}
+                    { }
                     <TouchableOpacity
                         onPress={() => onSetDeadline(item)}
                         style={styles.deadlineButton}
@@ -130,7 +124,7 @@ const TaskItem = ({ item, onEdit, onDelete, onStatusChange, onSetDeadline, onSet
                         <Icon name="chevron-forward" size={16} color={theme.colors.text} style={{ marginLeft: 5 }} />
                     </TouchableOpacity>
 
-                    {/* Status Badge (Touchable to cycle status) */}
+                    { }
                     <TouchableOpacity
                         onPress={() => onStatusChange(item.id, nextStatus)}
                         style={[styles.statusBadge, { backgroundColor: statusInfo.color }]}
@@ -142,7 +136,7 @@ const TaskItem = ({ item, onEdit, onDelete, onStatusChange, onSetDeadline, onSet
                     </TouchableOpacity>
                 </View>
 
-                {/* REMARKS SECTION (Collapsible) */}
+                { }
                 {hasRemarks && (
                     <View style={styles.remarksSection}>
                         <TouchableOpacity
@@ -182,7 +176,6 @@ const TaskItem = ({ item, onEdit, onDelete, onStatusChange, onSetDeadline, onSet
     );
 };
 
-// --- Styles ---
 const createStyles = (theme) => StyleSheet.create({
     statusInProgressColor: {
         backgroundColor: '#5bc0de',
@@ -215,7 +208,7 @@ const createStyles = (theme) => StyleSheet.create({
         alignItems: 'flex-start',
         marginBottom: 8,
     },
-    
+
     title: {
         fontSize: 18,
         fontWeight: '700',
@@ -229,7 +222,7 @@ const createStyles = (theme) => StyleSheet.create({
         paddingTop: 4,
     },
     iconButton: {
-        marginLeft: 15, // This space separates the action icons
+        marginLeft: 15,
     },
     description: {
         fontSize: 15,

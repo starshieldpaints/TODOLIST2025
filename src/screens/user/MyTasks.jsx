@@ -10,7 +10,6 @@ import DatePicker from 'react-native-date-picker';
 import { useTheme } from '../../hooks/useTheme';
 import TaskItem from './components/TaskItems';
 
-
 const formatDate = (date) => {
   return date.toLocaleDateString('en-US', {
     weekday: 'short',
@@ -31,14 +30,12 @@ const TasksScreen = () => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Modal and form state
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  // State for direct edits from TaskItem
   const [deadlineModalVisible, setDeadlineModalVisible] = useState(false);
   const [taskToEditDeadline, setTaskToEditDeadline] = useState(null);
-  // ⭐️ NEW STATE for TaskItem Reminder Edit ⭐️
+
   const [taskToEditReminder, setTaskToEditReminder] = useState(null);
 
   const [currentTask, setCurrentTask] = useState(null);
@@ -55,10 +52,8 @@ const TasksScreen = () => {
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // State for Reminder
   const [reminder, setReminder] = useState(null);
   const [showReminderPicker, setShowReminderPicker] = useState(false);
-
 
   useEffect(() => {
     const currentUser = auth().currentUser;
@@ -67,8 +62,6 @@ const TasksScreen = () => {
     }
   }, []);
 
-
-  // Firestore listener 
   useEffect(() => {
     if (!user) return;
     setLoading(true);
@@ -80,7 +73,6 @@ const TasksScreen = () => {
         const userData = documentSnapshot.data();
         let userTasks = userData?.myTasks || [];
 
-        // Sort by creation date (newest first)
         userTasks.sort((a, b) => {
           if (a.createdAt && b.createdAt) {
             return b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime();
@@ -98,10 +90,6 @@ const TasksScreen = () => {
 
     return () => subscriber();
   }, [user]);
-
-  // ------------------------------------
-  // TASK CRUD LOGIC (Unchanged)
-  // ------------------------------------
 
   const handleAddTask = async () => {
     if (!title.trim() || !description.trim()) {
@@ -220,12 +208,10 @@ const TasksScreen = () => {
     }
   };
 
-  // ⭐️ MODIFIED: Universal Reminder Update Handler ⭐️
   const handleUpdateReminder = async (newDate) => {
-    // 1. Update the local state for the picker's date
+
     setReminder(newDate);
 
-    // 2. Determine if we need to update Firestore immediately (from TaskItem click)
     if (taskToEditReminder) {
       const reminderTimestamp = firestore.Timestamp.fromDate(newDate);
 
@@ -244,14 +230,13 @@ const TasksScreen = () => {
         await firestore().collection('users').doc(user.uid).update({
           myTasks: updatedTasks
         });
-        setTaskToEditReminder(null); // Clear the task context
+        setTaskToEditReminder(null);
       } catch (error) {
         console.error("Error updating reminder: ", error);
         Alert.alert("Error", "Failed to update task reminder.");
       }
     }
 
-    // 3. Close the picker
     setShowReminderPicker(false);
   };
 
@@ -281,7 +266,6 @@ const TasksScreen = () => {
     );
   };
 
-
   const handleStatusChange = async (taskId, nextStatus) => {
     if (!user) return;
 
@@ -309,10 +293,6 @@ const TasksScreen = () => {
     }
   };
 
-
-  // ------------------------------------
-  // MODAL CONTROLS
-  // ------------------------------------
   const openCreateModal = () => {
     setIsEditing(false);
     setCurrentTask(null);
@@ -345,10 +325,9 @@ const TasksScreen = () => {
     setDeadlineModalVisible(true);
   };
 
-  // ⭐️ NEW HANDLER FOR TASKITEM REMINDER BUTTON ⭐️
   const openReminderPickerForTask = (task) => {
     setTaskToEditReminder(task);
-    // Set the picker date to the task's reminder or a new date
+
     setReminder(task.reminder?.toDate() || new Date());
     setShowReminderPicker(true);
   };
@@ -359,7 +338,7 @@ const TasksScreen = () => {
     setShowReminderPicker(false);
     setNewRemarkText('');
     setCurrentRemarksArray([]);
-    setTaskToEditReminder(null); 
+    setTaskToEditReminder(null);
   };
 
   if (loading) {
@@ -398,7 +377,7 @@ const TasksScreen = () => {
           <Icon name="add" size={30} color="#FFFFFF" />
         </TouchableOpacity>
 
-        {/* REACT NATIVE PAPER MODAL IMPLEMENTATION (Create/Edit) */}
+        { }
         <Portal>
           <Modal
             visible={modalVisible}
@@ -431,7 +410,7 @@ const TasksScreen = () => {
               textColor={theme.colors.text}
             />
 
-            {/* DEADLINE INPUT */}
+            { }
             <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowDatePicker(true)}>
               <Text style={styles.dateLabel}>
                 <Text style={styles.dateValue}>{formatDate(deadline)}</Text>
@@ -439,7 +418,7 @@ const TasksScreen = () => {
               <Icon name="calendar-outline" size={20} color={theme.colors.text} />
             </TouchableOpacity>
 
-            {/* Input for NEW remark */}
+            { }
             <PaperTextInput
               label={isEditing ? "Add New Remark" : "Initial Remark (Optional)"}
               value={newRemarkText}
@@ -453,7 +432,7 @@ const TasksScreen = () => {
               theme={{ colors: { background: theme.colors.card } }}
             />
 
-            {/* Show existing remarks in edit mode (Latest 3) */}
+            { }
             {isEditing && currentRemarksArray.length > 0 && (
               <View style={styles.existingRemarksContainer}>
                 <Text style={styles.existingRemarksTitle}>Existing Remarks ({currentRemarksArray.length})</Text>
@@ -474,10 +453,9 @@ const TasksScreen = () => {
               </View>
             )}
 
-
-            {/* Button Row for REMINDER in the main modal */}
+            { }
             <View style={styles.buttonRowExpanded}>
-              {/* Clear Reminder Button (Visible only if reminder is set) */}
+              { }
               {reminder && (
                 <TouchableOpacity
                   style={styles.clearReminderButton}
@@ -489,8 +467,7 @@ const TasksScreen = () => {
               )}
             </View>
 
-
-            {/* Button Row for Cancel/Save */}
+            { }
             <View style={styles.buttonRow}>
               <PaperButton
                 mode="outlined"
@@ -515,7 +492,7 @@ const TasksScreen = () => {
           </Modal>
         </Portal>
 
-        {/* DatePicker Component for DEADLINE - FOR MAIN MODAL */}
+        { }
         <DatePicker
           modal
           open={showDatePicker}
@@ -533,7 +510,7 @@ const TasksScreen = () => {
           textColor={theme.colors.text}
         />
 
-        {/* ⭐️ DatePicker Component for REMINDER (Universal Picker) ⭐️ */}
+        { }
         <DatePicker
           modal
           open={showReminderPicker}
@@ -541,7 +518,7 @@ const TasksScreen = () => {
           onConfirm={handleUpdateReminder}
           onCancel={() => {
             setShowReminderPicker(false);
-            setTaskToEditReminder(null); // Clear context on cancel
+            setTaskToEditReminder(null);
           }}
           minimumDate={new Date()}
           mode="datetime"
@@ -549,7 +526,7 @@ const TasksScreen = () => {
           textColor={theme.colors.text}
         />
 
-        {/* DatePicker Component for direct DEADLINE EDITING from TaskItem */}
+        { }
         <DatePicker
           modal
           open={deadlineModalVisible}
@@ -573,9 +550,8 @@ const TasksScreen = () => {
   );
 };
 
-
 const createStyles = (theme, paperTheme) => StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: theme.colors.background,  },
+  safeArea: { flex: 1, backgroundColor: theme.colors.background, },
   innerContainer: { flex: 1, paddingHorizontal: 18, paddingVertical: 0, },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
   header: { fontSize: 28, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16, marginTop: 10 },
@@ -607,7 +583,6 @@ const createStyles = (theme, paperTheme) => StyleSheet.create({
   },
   existingRemarkText: { fontSize: 12, color: theme.dark ? '#bbb' : '#444', marginBottom: 4 },
 
-  // Styles for action buttons
   buttonRowExpanded: { flexDirection: 'row', width: '100%', alignItems: 'center', marginBottom: 15 },
   reminderActionButton: {
     flexGrow: 1, marginRight: 10, borderWidth: 1, borderColor: theme.colors.primary,

@@ -10,7 +10,6 @@ import DatePicker from 'react-native-date-picker';
 import { useTheme } from '../../hooks/useTheme';
 import TaskItem from '../user/components/TaskItems';
 
-
 const formatDate = (date) => {
     return date.toLocaleDateString('en-US', {
         weekday: 'short',
@@ -31,16 +30,14 @@ const TasksScreen = () => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Modal and form state
     const [modalVisible, setModalVisible] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [currentTask, setCurrentTask] = useState(null);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
 
-    // State to hold the array of existing remarks for display in the modal
     const [currentRemarksArray, setCurrentRemarksArray] = useState([]);
-    // State to hold the new remark being added in the modal
+
     const [newRemarkText, setNewRemarkText] = useState('');
 
     const [deadline, setDeadline] = useState(() => {
@@ -49,7 +46,6 @@ const TasksScreen = () => {
         return d;
     });
     const [showDatePicker, setShowDatePicker] = useState(false);
-
 
     useEffect(() => {
         const currentUser = auth().currentUser;
@@ -69,7 +65,6 @@ const TasksScreen = () => {
                 const userData = documentSnapshot.data();
                 let userTasks = userData?.myTasks || [];
 
-                // Sort by creation date (newest first)
                 userTasks.sort((a, b) => {
                     if (a.createdAt && b.createdAt) {
                         return b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime();
@@ -96,7 +91,6 @@ const TasksScreen = () => {
 
         const newId = firestore().collection('users').doc().id;
 
-        // Prepare the initial remarks array
         const initialRemarks = newRemarkText.trim()
             ? [{
                 text: newRemarkText.trim(),
@@ -109,13 +103,13 @@ const TasksScreen = () => {
             id: newId,
             title,
             description,
-            status: 'Pending', // Default status
+            status: 'Pending',
             assignedBy: user.uid,
             assignedTo: user.uid,
             createdAt: firestore.Timestamp.now(),
             updatedAt: firestore.Timestamp.now(),
             deadline: firestore.Timestamp.fromDate(deadline),
-            remarks: initialRemarks, // Use the prepared array
+            remarks: initialRemarks,
         };
 
         try {
@@ -140,18 +134,16 @@ const TasksScreen = () => {
 
         let remarksToSave = [...(currentTask.remarks || [])];
 
-
         if (newRemarkText.trim()) {
             const newRemark = {
                 text: newRemarkText.trim(),
                 addedBy: user.uid,
                 timestamp: firestore.Timestamp.now(),
             };
-            // Prepend new remark for latest-to-oldest order
+
             remarksToSave = [newRemark, ...remarksToSave];
         }
 
-        // Map and update the array
         const updatedTasks = tasks.map(task => {
             if (task.id === currentTask.id) {
                 return {
@@ -159,7 +151,7 @@ const TasksScreen = () => {
                     title,
                     description,
                     deadline: firestore.Timestamp.fromDate(deadline),
-                    remarks: remarksToSave, // Use the new/updated remarks array
+                    remarks: remarksToSave,
                     updatedAt: firestore.Timestamp.now(),
                 };
             }
@@ -203,12 +195,9 @@ const TasksScreen = () => {
         );
     };
 
-
-    // IMPLEMENTATION OF handleStatusChange
     const handleStatusChange = async (taskId, nextStatus) => {
         if (!user) return;
 
-        // Map over tasks to update the status of the specific task
         const updatedTasks = tasks.map(task => {
             if (task.id === taskId) {
                 return {
@@ -220,7 +209,6 @@ const TasksScreen = () => {
             return task;
         });
 
-        // Write the entire updated array back to Firestore
         try {
             await firestore()
                 .collection('users')
@@ -254,7 +242,7 @@ const TasksScreen = () => {
         setDescription(task.description);
         setDeadline(task.deadline?.toDate() || new Date());
         setCurrentRemarksArray(task.remarks || []);
-        setNewRemarkText(''); 
+        setNewRemarkText('');
 
         setModalVisible(true);
     };
@@ -262,11 +250,10 @@ const TasksScreen = () => {
     const closeModal = () => {
         setModalVisible(false);
         setShowDatePicker(false);
-        // Clear all remark states on close
+
         setNewRemarkText('');
         setCurrentRemarksArray([]);
     };
-
 
     if (loading) {
         return (
@@ -278,8 +265,8 @@ const TasksScreen = () => {
 
     return (
         <PaperProvider theme={paperTheme} >
-            <SafeAreaView style={[styles.safeArea,{flex:1}]} >
-                <View style={[styles.innerContainer,{flex:1}]}>
+            <SafeAreaView style={[styles.safeArea, { flex: 1 }]} >
+                <View style={[styles.innerContainer, { flex: 1 }]}>
                     <Text style={styles.header}>My Personal Tasks </Text>
 
                     <FlatList
@@ -301,7 +288,7 @@ const TasksScreen = () => {
                     <Icon name="add" size={30} color="#FFFFFF" />
                 </TouchableOpacity>
 
-                {/* REACT NATIVE PAPER MODAL IMPLEMENTATION */}
+                { }
                 <Portal>
                     <Modal
                         visible={modalVisible}
@@ -334,7 +321,7 @@ const TasksScreen = () => {
                             textColor={theme.colors.text}
                         />
 
-                        {/* DEADLINE INPUT */}
+                        { }
                         <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowDatePicker(true)}>
                             <Text style={styles.dateLabel}>
                                 <Text style={styles.dateValue}>{formatDate(deadline)}</Text>
@@ -342,7 +329,7 @@ const TasksScreen = () => {
                             <Icon name="calendar-outline" size={20} color={theme.colors.text} />
                         </TouchableOpacity>
 
-                        {/* Input for NEW remark */}
+                        { }
                         <PaperTextInput
                             label={isEditing ? "Add New Remark" : "Initial Remark (Optional)"}
                             value={newRemarkText}
@@ -356,12 +343,12 @@ const TasksScreen = () => {
                             theme={{ colors: { background: theme.colors.card } }}
                         />
 
-                        {/* Show existing remarks in edit mode (Latest 3) */}
+                        { }
                         {isEditing && currentRemarksArray.length > 0 && (
                             <View style={styles.existingRemarksContainer}>
                                 <Text style={styles.existingRemarksTitle}>Existing Remarks ({currentRemarksArray.length})</Text>
                                 <FlatList
-                                    data={currentRemarksArray.slice(0, 3)} // Show max 3 for modal brevity
+                                    data={currentRemarksArray.slice(0, 3)}
                                     keyExtractor={(item, index) => index.toString()}
                                     renderItem={({ item, index }) => (
                                         <Text
@@ -376,7 +363,6 @@ const TasksScreen = () => {
                                 />
                             </View>
                         )}
-
 
                         <View style={styles.buttonRow}>
                             <PaperButton
@@ -402,7 +388,7 @@ const TasksScreen = () => {
                     </Modal>
                 </Portal>
 
-                {/* DatePicker Component */}
+                { }
                 <DatePicker
                     modal
                     open={showDatePicker}
@@ -425,18 +411,17 @@ const TasksScreen = () => {
     );
 };
 
-// Styles 
 const createStyles = (theme, paperTheme) => StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: theme.colors.background,
     },
     innerContainer: {
-     
-        alignContent:"space-between",
+
+        alignContent: "space-between",
         paddingHorizontal: 12,
         paddingVertical: 0,
-        backfaceVisibility:"hidden"
+        backfaceVisibility: "hidden"
 
     },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
@@ -455,7 +440,6 @@ const createStyles = (theme, paperTheme) => StyleSheet.create({
         elevation: 8
     },
 
-    // REACT NATIVE PAPER MODAL STYLES
     modalView: {
         width: '100%',
         height: "100%",
@@ -500,7 +484,6 @@ const createStyles = (theme, paperTheme) => StyleSheet.create({
         minHeight: 80,
     },
 
-    // NEW STYLES FOR MODAL EXISTING REMARKS
     existingRemarksContainer: {
         width: '100%',
         marginTop: 5,

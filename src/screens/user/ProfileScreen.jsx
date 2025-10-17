@@ -8,7 +8,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     TouchableOpacity,
-    ActivityIndicator, // For loading/uploading feedback
+    ActivityIndicator,
 } from "react-native";
 import { Text, Button, Switch, Divider, Avatar } from "react-native-paper";
 import { ThemeContext } from "../../context/ThemeContext";
@@ -17,20 +17,17 @@ import auth from "@react-native-firebase/auth";
 import firestore from "@react-native-firebase/firestore";
 import messaging from "@react-native-firebase/messaging";
 import storage from '@react-native-firebase/storage';
-import * as ImagePicker from 'react-native-image-picker'; // 👈 ACTUAL IMAGE PICKER IMPORT
+import * as ImagePicker from 'react-native-image-picker';
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-// =========================================================================
-// Image Picker Function: Uses react-native-image-picker's launchImageLibrary
-// =========================================================================
 const pickImage = async () => {
     const options = {
         mediaType: 'photo',
         quality: 0.8,
         maxWidth: 500,
         maxHeight: 500,
-        includeExtra: true, // Needed for Android file path on newer versions
+        includeExtra: true,
     };
 
     return new Promise((resolve) => {
@@ -43,11 +40,9 @@ const pickImage = async () => {
                 Alert.alert("Error", `Failed to pick image: ${response.errorMessage}`);
                 resolve(null);
             } else if (response.assets && response.assets.length > 0) {
-                // The URI/path is usually in assets[0].uri
+
                 const asset = response.assets[0];
 
-                // IMPORTANT: Use the correct URI format based on the asset source
-                // For Android, asset.uri is usually fine. For iOS, we often need the URI directly.
                 resolve(asset.uri);
             } else {
                 resolve(null);
@@ -55,7 +50,6 @@ const pickImage = async () => {
         });
     });
 };
-
 
 export default function ProfileScreen({ navigation }) {
     const { theme, toggleTheme } = useContext(ThemeContext);
@@ -98,39 +92,34 @@ export default function ProfileScreen({ navigation }) {
         return () => unsubscribe();
     }, [user]);
 
-
     const uploadImage = async (uri) => {
         if (!user || !uri) return;
 
         setUploading(true);
         setUploadProgress(0);
 
-        // Get file extension and create a unique name
-        const fileExtension = uri.split('.').pop().split('?')[0]; // Handle query parameters in URI
+        const fileExtension = uri.split('.').pop().split('?')[0];
         const filename = `${new Date().getTime()}.${fileExtension}`;
 
-        // Define the storage path
         const storageRef = storage().ref(`profile_pictures/${user.uid}/${filename}`);
 
         try {
-            // PutFile expects a local file path/URI
+
             const task = storageRef.putFile(uri);
 
-            // Listen for state changes (progress)
             task.on('state_changed', (snapshot) => {
                 const progress = (snapshot.bytesTransferred / snapshot.totalBytes);
                 setUploadProgress(progress);
             });
 
-            await task; // Wait for the upload to complete
-            const imageUrl = await storageRef.getDownloadURL(); // Get the public URL
+            await task;
+            const imageUrl = await storageRef.getDownloadURL();
 
-            // Update Firestore with the new URL
             await firestore().collection("users").doc(user.uid).update({
                 profilePicUrl: imageUrl,
             });
 
-            setProfilePicUrl(imageUrl); // Update local state
+            setProfilePicUrl(imageUrl);
             Alert.alert("Success", "Profile picture updated successfully!");
         } catch (error) {
             console.error("Error uploading picture:", error);
@@ -141,25 +130,23 @@ export default function ProfileScreen({ navigation }) {
         }
     };
 
-    // Handler for the profile picture button press
     const handleImagePickAndUpload = async () => {
-        if (uploading) return; // Prevent multiple uploads
+        if (uploading) return;
         const imageUri = await pickImage();
         if (imageUri) {
             await uploadImage(imageUri);
         }
     };
 
-    // Existing functions (omitting internal logic for brevity, keeping API calls)
     const togglePushNotifications = async (value) => {
-        // ... (existing Firebase logic)
+
         setPushNotifications(value);
     };
 
     const toggleEmailNotifications = (value) => setEmailNotifications(value);
 
     const handleSave = async () => {
-        if (!user || uploading) return; // Prevent saving while uploading
+        if (!user || uploading) return;
         try {
             await firestore().collection("users").doc(user.uid).update({
                 name,
@@ -197,7 +184,7 @@ export default function ProfileScreen({ navigation }) {
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top', 'bottom']}>
             <LinearGradient
                 colors={theme.dark ? ["#121212", "#1F1F1F"] : ["#FFFFFF", "#F4F4F4"]}
-                style={{ flex: 1 , marginBottom:18}}
+                style={{ flex: 1, marginBottom: 18 }}
             >
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
@@ -211,11 +198,11 @@ export default function ProfileScreen({ navigation }) {
                         }}
                         showsVerticalScrollIndicator={false}
                     >
-                        {/* Header with Profile Picture Upload */}
+                        { }
                         <View style={{ alignItems: "center", marginBottom: 10 }}>
                             <TouchableOpacity
                                 onPress={handleImagePickAndUpload}
-                                disabled={uploading} // Disable touch while uploading
+                                disabled={uploading}
                                 style={styles.avatarContainer}
                             >
                                 {isImage ? (
@@ -267,13 +254,13 @@ export default function ProfileScreen({ navigation }) {
                                 ]}
                                 placeholder="Enter your name"
                                 placeholderTextColor={theme.dark ? "#AAAAAA" : "#888"}
-                                editable={!uploading} // Disable editing during upload
+                                editable={!uploading}
                             />
                         </View>
 
                         <Divider style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
-                        {/* Notifications Section (omitted for brevity) */}
+                        { }
                         <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
                             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
                                 <Icon name="bell-outline" size={18} /> Notifications
@@ -290,7 +277,7 @@ export default function ProfileScreen({ navigation }) {
 
                         <Divider style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
-                        {/* Appearance Section */}
+                        { }
                         <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
                             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
                                 <Icon name="palette-outline" size={18} /> Appearance
@@ -303,7 +290,7 @@ export default function ProfileScreen({ navigation }) {
 
                         <Divider style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
-                        {/* Buttons */}
+                        { }
                         <Button
                             mode="contained"
                             onPress={handleSave}
@@ -311,7 +298,7 @@ export default function ProfileScreen({ navigation }) {
                             textColor={theme.colors.text}
                             style={styles.saveButton}
                             icon="content-save-outline"
-                            disabled={uploading} // Disable save while uploading
+                            disabled={uploading}
                         >
                             Save Changes
                         </Button>
@@ -352,7 +339,7 @@ const styles = StyleSheet.create({
     avatarContainer: {
         position: 'relative',
         marginBottom: 5,
-        borderRadius: 50, // To ensure the touchable area is round
+        borderRadius: 50,
     },
     cameraIconContainer: {
         position: 'absolute',

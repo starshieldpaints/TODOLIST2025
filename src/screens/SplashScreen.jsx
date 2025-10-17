@@ -12,10 +12,10 @@ import LinearGradient from "react-native-linear-gradient";
 
 export default function SplashScreen() {
     const navigation = useNavigation();
-    const scheme = useColorScheme(); 
+    const scheme = useColorScheme();
     useEffect(() => {
         const timer = setTimeout(() => {
-            navigation.replace("Home"); // navigate after splash
+            navigation.replace("Home");
         }, 2500);
 
         return () => clearTimeout(timer);
@@ -26,18 +26,18 @@ export default function SplashScreen() {
     return (
         <LinearGradient
             colors={
-                ["gray", "black", "red"]// Light mode gradient
+                ["gray", "black", "red"]
             }
             style={styles.container}
         >
-            {/* Company Logo */}
+            { }
             <Image
                 source={require("../../assets/logo.png")}
                 style={styles.logo}
                 resizeMode="contain"
             />
 
-            {/* App Name */}
+            { }
             <Text style={[styles.title, { color: isDark ? "#FFFFFF" : "#005BAC" }]}>
                 StarShield
             </Text>

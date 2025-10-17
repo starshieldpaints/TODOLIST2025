@@ -15,13 +15,13 @@ export async function checkSecurityStatus() {
     if (Platform.OS !== 'android') return false;
 
     try {
-        // 🧭 Ask for location permission (optional, helps mock detection)
+
         try {
             await PermissionsAndroid.request(
                 PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
             );
         } catch {
-            // ignore if denied
+
         }
 
         const [devMode, usbDebugging, mockLocation] = await Promise.all([
@@ -47,7 +47,7 @@ export async function checkSecurityStatus() {
                             try {
                                 DeveloperMode.openDeveloperSettings();
                             } catch {
-                                // fallback to system settings if native call fails
+
                                 Linking.openSettings();
                             }
                         },
@@ -73,10 +73,9 @@ export async function checkSecurityStatus() {
 
 export function useEnforceDevModeBlock() {
     React.useEffect(() => {
-        // Check immediately on start
+
         checkSecurityStatus();
 
-        // Recheck whenever app returns to foreground
         const sub = AppState.addEventListener('change', (state) => {
             if (state === 'active') checkSecurityStatus();
         });
